@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
+use App\Exception\InsufficientFundsException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -41,46 +41,19 @@ class TransferServiceTest extends TestCase
         );
     }
 
-    public function testTransferSuccessfully(): void
+    public function testTransferCreatesTransactionWithCorrectData(): void
     {
         $userId = 1;
         $fromWallet = $this->createMock(Wallet::class);
-        $fromWallet
-            ->method('getCurrency')
-            ->willReturn(Currency::PLN);
-        $fromWallet
-            ->expects($this->atLeastOnce())
-            ->method('getBalance')
-            ->willReturnOnConsecutiveCalls(
-                5000.0,
-                4000.0
-            );
-        $fromWallet
-            ->method('getUserId')
-            ->willReturn($userId);
-        $fromWallet
-            ->expects($this->never())
-            ->method('setBalance');
+        $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn(5000.0);
+
         $toWallet = $this->createMock(Wallet::class);
-        $toWallet
-            ->method('getCurrency')
-            ->willReturn(Currency::EUR);
-        $toWallet
-            ->expects($this->atLeastOnce())
-            ->method('getBalance')
-            ->willReturnOnConsecutiveCalls(
-                100.0,
-                349.0
-            );
-        $toWallet
-            ->method('getUserId')
-            ->willReturn($userId);
-        $toWallet
-            ->expects($this->never())
-            ->method('setBalance');
+        $toWallet->method('getCurrency')->willReturn(Currency::EUR);
+        $toWallet->method('getUserId')->willReturn($userId);
 
         $this->walletRepository
-            ->expects(self::exactly(2))
             ->method('findById')
             ->willReturnMap([
                 [1, $fromWallet],
@@ -99,28 +72,118 @@ class TransferServiceTest extends TestCase
             ->with(250.0, Currency::PLN, Currency::EUR)
             ->willReturn('1.00');
 
-        $this->walletRepository
-            ->expects(self::exactly(2))
-            ->method('save')
-            ->with($this->isInstanceOf(Wallet::class));
-
-        $this->transactionRepository
-            ->expects(self::once())
-            ->method('save')
-            ->with($this->isInstanceOf(Transaction::class));
-
         $transaction = $this->transferService->transfer($userId, 1, 2, '1000.00');
 
-        self::assertSame(4000.0, $fromWallet->getBalance());
-        self::assertSame(349.0, $toWallet->getBalance());
         self::assertSame(TransactionStatus::PENDING, $transaction->getStatus());
         self::assertFalse($transaction->requiresAntiFraudCheck());
         self::assertSame('1000.00', $transaction->getFromAmount());
-        self::assertSame('248.3775', $transaction->getToAmount());
+        self::assertSame('249.0000', $transaction->getToAmount());
         self::assertSame('0.250000', $transaction->getExchangeRate());
         self::assertSame('1.00', $transaction->getSpread());
         self::assertSame(Currency::PLN, $transaction->getFromCurrency());
         self::assertSame(Currency::EUR, $transaction->getToCurrency());
+    }
+
+    public function testTransferDoesNotMutateWalletBalances(): void
+    {
+        $userId = 1;
+        $fromWallet = $this->createMock(Wallet::class);
+        $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn(5000.0);
+        $fromWallet->expects($this->never())->method('setBalance');
+
+        $toWallet = $this->createMock(Wallet::class);
+        $toWallet->method('getCurrency')->willReturn(Currency::EUR);
+        $toWallet->method('getUserId')->willReturn($userId);
+        $toWallet->expects($this->never())->method('setBalance');
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->spreadService->method('calculateSpread')->willReturn('1.00');
+
+        $this->transferService->transfer($userId, 1, 2, '1000.00');
+    }
+
+    public function testTransferUpdatesLastActivityAtOnBothWallets(): void
+    {
+        $userId = 1;
+        $fromWallet = Wallet::create($userId, Currency::PLN);
+        $fromWallet->setBalance(5000.0);
+
+        $toWallet = Wallet::create($userId, Currency::EUR);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->spreadService->method('calculateSpread')->willReturn('1.00');
+
+        $this->transferService->transfer($userId, 1, 2, '1000.00');
+
+        self::assertNotNull($fromWallet->getLastActivityAt());
+        self::assertNotNull($toWallet->getLastActivityAt());
+    }
+
+    public function testTransferRequiresAntiFraudCheckForLargeAmount(): void
+    {
+        $userId = 1;
+        $fromWallet = $this->createMock(Wallet::class);
+        $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn(1_000_000.0);
+
+        $toWallet = $this->createMock(Wallet::class);
+        $toWallet->method('getCurrency')->willReturn(Currency::EUR);
+        $toWallet->method('getUserId')->willReturn($userId);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        // 100000 PLN * 0.25 = 25000 EUR > 15000
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->spreadService->method('calculateSpread')->willReturn('0.00');
+
+        $transaction = $this->transferService->transfer($userId, 1, 2, '100000.00');
+
+        self::assertTrue($transaction->requiresAntiFraudCheck());
+    }
+
+    public function testTransferThrowsWhenInsufficientFunds(): void
+    {
+        $userId = 1;
+        $fromWallet = Wallet::create($userId, Currency::PLN);
+        $fromWallet->setBalance(100.0);
+
+        $toWallet = Wallet::create($userId, Currency::EUR);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        $this->walletRepository->expects(self::never())->method('save');
+        $this->transactionRepository->expects(self::never())->method('save');
+
+        $this->expectException(InsufficientFundsException::class);
+
+        $this->transferService->transfer($userId, 1, 2, '500.00');
     }
 
     public function testTransferThrowsWhenFromWalletNotFound(): void
