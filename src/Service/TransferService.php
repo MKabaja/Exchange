@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Transaction;
+use App\Entity\Wallet;
+use App\Exception\InsufficientFundsException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -26,15 +28,10 @@ readonly class TransferService
         int $toWalletId,
         string $fromAmount,
     ): Transaction {
-        $fromWallet = $this->walletRepository->findById($fromWalletId);
-        if (null === $fromWallet || $fromWallet->getUserId() !== $userId) {
-            throw new WalletNotFoundException($fromWalletId);
-        }
+        $fromWallet = $this->getUserWallet($fromWalletId, $userId);
+        $toWallet = $this->getUserWallet($toWalletId, $userId);
 
-        $toWallet = $this->walletRepository->findById($toWalletId);
-        if (null === $toWallet || $toWallet->getUserId() !== $userId) {
-            throw new WalletNotFoundException($toWalletId);
-        }
+        $this->ensureSufficientFunds($fromWallet, $fromAmount);
 
         $fromCurrency = $fromWallet->getCurrency();
         $toCurrency = $toWallet->getCurrency();
@@ -67,5 +64,22 @@ readonly class TransferService
         $this->transactionRepository->save($transaction);
 
         return $transaction;
+    }
+
+    private function getUserWallet(int $walletId, int $userId): Wallet
+    {
+        $wallet = $this->walletRepository->findById($walletId);
+        if (null === $wallet || $wallet->getUserId() !== $userId) {
+            throw new WalletNotFoundException($walletId);
+        }
+
+        return $wallet;
+    }
+
+    private function ensureSufficientFunds(Wallet $wallet, string $amount): void
+    {
+        if ($wallet->getBalance() < (float) $amount) {
+            throw new InsufficientFundsException();
+        }
     }
 }
