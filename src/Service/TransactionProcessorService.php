@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Transaction;
+use App\Entity\Wallet;
 use App\Enum\TransactionStatus;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -30,20 +31,13 @@ final readonly class TransactionProcessorService
         }
 
         $fromWallet->setBalance($fromWallet->getBalance() - (float) $transaction->getFromAmount());
-        $fromWallet->setLastActivityAt(new DateTimeImmutable());
-
         $toWallet->setBalance($toWallet->getBalance() + (float) $transaction->getToAmount());
-        $toWallet->setLastActivityAt(new DateTimeImmutable());
 
-        $this->walletRepository->save($fromWallet);
-        $this->walletRepository->save($toWallet);
+        $this->updateWalletActivity($fromWallet);
+        $this->updateWalletActivity($toWallet);
 
         $transaction->setStatus(TransactionStatus::COMPLETED);
-
-        if ($transaction->requiresAntiFraudCheck()) {
-            $transaction->setAntiFraudCheckedAt(new DateTimeImmutable());
-        }
-
+        $this->markAntiFraudCheckedIfRequired($transaction);
         $this->transactionRepository->save($transaction);
     }
 
@@ -51,16 +45,24 @@ final readonly class TransactionProcessorService
     {
         $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
         if (null !== $fromWallet) {
-            $fromWallet->setLastActivityAt(new DateTimeImmutable());
-            $this->walletRepository->save($fromWallet);
+            $this->updateWalletActivity($fromWallet);
         }
 
         $transaction->setStatus(TransactionStatus::REJECTED);
+        $this->markAntiFraudCheckedIfRequired($transaction);
+        $this->transactionRepository->save($transaction);
+    }
 
+    private function updateWalletActivity(Wallet $wallet): void
+    {
+        $wallet->setLastActivityAt(new DateTimeImmutable());
+        $this->walletRepository->save($wallet);
+    }
+
+    private function markAntiFraudCheckedIfRequired(Transaction $transaction): void
+    {
         if ($transaction->requiresAntiFraudCheck()) {
             $transaction->setAntiFraudCheckedAt(new DateTimeImmutable());
         }
-
-        $this->transactionRepository->save($transaction);
     }
 }
