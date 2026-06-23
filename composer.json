@@ -29,6 +29,7 @@
         "optimize-autoloader": true,
         "sort-packages": true,
         "allow-plugins": {
+            "phpstan/extension-installer": true,
             "symfony/flex": true,
             "symfony/runtime": true
         }
@@ -41,7 +42,13 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd"
         },
         "cs-fix": "php-cs-fixer fix",
-        "tests": "phpunit"
+        "tests": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=512M",
+        "check": [
+            "@cs-fix",
+            "@analyse",
+            "@tests"
+        ]
     },
     "extra": {
         "symfony": {
@@ -50,6 +57,9 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^13",
         "symfony/maker-bundle": "^1.67"
     }

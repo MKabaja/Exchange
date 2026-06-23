@@ -1,0 +1,73 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method App\\Dto\\TransactionResponse\:\:jsonSerialize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Dto/TransactionResponse.php
+
+		-
+			message: '#^Method App\\Dto\\WalletResponse\:\:jsonSerialize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Dto/WalletResponse.php
+
+		-
+			message: '#^Method App\\Entity\\User\:\:__construct\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Entity/User.php
+
+		-
+			message: '#^Method App\\Entity\\User\:\:setRoles\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Entity/User.php
+
+		-
+			message: '#^Method App\\Repository\\CompanyWalletRepository\:\:buildEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/CompanyWalletRepository.php
+
+		-
+			message: '#^Method App\\Repository\\TransactionRepository\:\:buildEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/TransactionRepository.php
+
+		-
+			message: '#^Method App\\Repository\\UserRepository\:\:buildEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/UserRepository.php
+
+		-
+			message: '#^Method App\\Repository\\UserTokenRepository\:\:buildEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/UserTokenRepository.php
+
+		-
+			message: '#^Method App\\Repository\\WalletRepository\:\:buildEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Repository/WalletRepository.php
+
+		-
+			message: '#^Method App\\Security\\TokenAuthenticator\:\:onAuthenticationFailure\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Security/TokenAuthenticator.php
+
+		-
+			message: '#^Method App\\Security\\TokenAuthenticator\:\:supports\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Security/TokenAuthenticator.php
+
+		-
+			message: '#^Class App\\Security\\UserProvider implements generic interface Symfony\\Component\\Security\\Core\\User\\UserProviderInterface but does not specify its types\: TUser$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Security/UserProvider.php
