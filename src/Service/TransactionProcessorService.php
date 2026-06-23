@@ -49,6 +49,12 @@ final readonly class TransactionProcessorService
 
     public function reject(Transaction $transaction): void
     {
+        $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
+        if (null !== $fromWallet) {
+            $fromWallet->setLastActivityAt(new DateTimeImmutable());
+            $this->walletRepository->save($fromWallet);
+        }
+
         $transaction->setStatus(TransactionStatus::REJECTED);
 
         if ($transaction->requiresAntiFraudCheck()) {

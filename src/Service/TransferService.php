@@ -8,6 +8,7 @@ use App\Entity\Transaction;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
+use DateTimeImmutable;
 
 readonly class TransferService
 {
@@ -45,7 +46,10 @@ readonly class TransferService
 
         $toAmountFormatted = number_format($toAmount, 4, '.', '');
 
+        $fromWallet->setLastActivityAt(new DateTimeImmutable());
         $this->walletRepository->save($fromWallet);
+
+        $toWallet->setLastActivityAt(new DateTimeImmutable());
         $this->walletRepository->save($toWallet);
 
         $transaction = Transaction::create(
