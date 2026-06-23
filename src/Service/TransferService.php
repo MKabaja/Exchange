@@ -45,9 +45,6 @@ readonly class TransferService
 
         $toAmountFormatted = number_format($toAmount, 4, '.', '');
 
-        $fromWallet->setBalance($fromWallet->getBalance() - (float) $fromAmount);
-        $toWallet->setBalance($toWallet->getBalance() + (float) $toAmountFormatted);
-
         $this->walletRepository->save($fromWallet);
         $this->walletRepository->save($toWallet);
 
