@@ -123,7 +123,10 @@ class TransactionProcessorServiceTest extends TestCase
                 [2, null],
             ]);
 
-        $this->walletRepository->expects(self::never())->method('save');
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($fromWallet);
 
         $this->transactionProcessorService->complete($transaction);
 
@@ -164,6 +167,40 @@ class TransactionProcessorServiceTest extends TestCase
 
         self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
         self::assertNotNull($transaction->getAntiFraudCheckedAt());
+    }
+
+    public function testRejectUpdatesLastActivityAtOnFromWallet(): void
+    {
+        $wallet = Wallet::create(1, Currency::PLN);
+        $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
+
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('findById')
+            ->with(1)
+            ->willReturn($wallet);
+
+        $this->transactionProcessorService->reject($transaction);
+
+        self::assertNotNull($wallet->getLastActivityAt());
+        self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
+    }
+
+    public function testRejectDoesNotSaveWalletWhenFromWalletNotFound(): void
+    {
+        $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
+
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('findById')
+            ->with(1)
+            ->willReturn(null);
+
+        $this->walletRepository->expects(self::never())->method('save');
+
+        $this->transactionProcessorService->reject($transaction);
+
+        self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
     }
 
     private function makeTransaction(bool $requiresAntiFraudCheck): Transaction
