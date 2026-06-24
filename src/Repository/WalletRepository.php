@@ -97,6 +97,14 @@ readonly class WalletRepository implements WalletRepositoryInterface
         }
     }
 
+    /**
+     * @throws Exception
+     */
+    public function delete(int $id): void
+    {
+        $this->connection->delete(self::TABLE_NAME, ['id' => $id]);
+    }
+
     private function buildEntity(array $row): Wallet
     {
         return new Wallet(

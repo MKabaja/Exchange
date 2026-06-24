@@ -30,9 +30,6 @@ final readonly class TransactionProcessorService
             return;
         }
 
-        $fromWallet->setBalance($fromWallet->getBalance() - (float) $transaction->getFromAmount());
-        $toWallet->setBalance($toWallet->getBalance() + (float) $transaction->getToAmount());
-
         $this->updateWalletActivity($fromWallet);
         $this->updateWalletActivity($toWallet);
 
@@ -44,8 +41,16 @@ final readonly class TransactionProcessorService
     public function reject(Transaction $transaction): void
     {
         $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
+        $toWallet = $this->walletRepository->findById($transaction->getToWalletId());
+
         if (null !== $fromWallet) {
+            $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
             $this->updateWalletActivity($fromWallet);
+        }
+
+        if (null !== $toWallet) {
+            $toWallet->setBalance($toWallet->getBalance() - (float) $transaction->getToAmount());
+            $this->updateWalletActivity($toWallet);
         }
 
         $transaction->setStatus(TransactionStatus::REJECTED);
