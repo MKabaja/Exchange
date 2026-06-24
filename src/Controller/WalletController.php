@@ -12,8 +12,8 @@ use App\Exception\InsufficientFundsException;
 use App\Exception\WalletAlreadyExistsException;
 use App\Exception\WalletBlockedException;
 use App\Exception\WalletHasPendingTransactionsException;
-use App\Exception\WalletNotFoundException;
 use App\Exception\WalletNotEmptyException;
+use App\Exception\WalletNotFoundException;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
@@ -151,7 +151,7 @@ final class WalletController extends AbstractController
             return new Response(null, Response::HTTP_NO_CONTENT);
         } catch (WalletNotFoundException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (WalletNotEmptyException | WalletHasPendingTransactionsException $e) {
+        } catch (WalletNotEmptyException|WalletHasPendingTransactionsException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

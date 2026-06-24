@@ -9,8 +9,8 @@ use App\Enum\Currency;
 use App\Enum\TransactionStatus;
 use App\Exception\WalletAlreadyExistsException;
 use App\Exception\WalletHasPendingTransactionsException;
-use App\Exception\WalletNotFoundException;
 use App\Exception\WalletNotEmptyException;
+use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
 
