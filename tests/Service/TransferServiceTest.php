@@ -84,19 +84,13 @@ class TransferServiceTest extends TestCase
         self::assertSame(Currency::EUR, $transaction->getToCurrency());
     }
 
-    public function testTransferDoesNotMutateWalletBalances(): void
+    public function testTransferMutatesWalletBalancesImmediately(): void
     {
         $userId = 1;
-        $fromWallet = $this->createMock(Wallet::class);
-        $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
-        $fromWallet->method('getUserId')->willReturn($userId);
-        $fromWallet->method('getBalance')->willReturn(5000.0);
-        $fromWallet->expects($this->never())->method('setBalance');
+        $fromWallet = Wallet::create($userId, Currency::PLN);
+        $fromWallet->setBalance(5000.0);
 
-        $toWallet = $this->createMock(Wallet::class);
-        $toWallet->method('getCurrency')->willReturn(Currency::EUR);
-        $toWallet->method('getUserId')->willReturn($userId);
-        $toWallet->expects($this->never())->method('setBalance');
+        $toWallet = Wallet::create($userId, Currency::EUR);
 
         $this->walletRepository
             ->method('findById')
@@ -109,6 +103,9 @@ class TransferServiceTest extends TestCase
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
 
         $this->transferService->transfer($userId, 1, 2, '1000.00');
+
+        self::assertSame(4000.0, $fromWallet->getBalance());
+        self::assertSame(249.0, $toWallet->getBalance());
     }
 
     public function testTransferUpdatesLastActivityAtOnBothWallets(): void
