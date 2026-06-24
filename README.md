@@ -139,6 +139,14 @@ This project underwent a full code audit. Below is a summary of everything that 
 
 ### `fix/bugs` — bugs found and fixed
 
+#### PHPStan setup
+
+Before starting any fixes, PHPStan was configured and a baseline was generated against the original codebase. This locked in the existing error state and ensured that no new static analysis errors were introduced during the bug-fixing process. Every fix was verified against the baseline — the rule was: fix the bug, don't add new PHPStan violations.
+
+**Commits:** `chore: add PHPStan with baseline`, `chore: add PHPStan config and update lockfiles`
+
+---
+
 #### [1] `wallets.balance` — `DOUBLE` instead of `DECIMAL(15,4)` · **severity: high**
 
 **File:** `migrations/Version20260519090000.php`
