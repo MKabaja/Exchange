@@ -1,5 +1,14 @@
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
+import DataGrid, { Column } from 'devextreme-react/data-grid';
+import Chart, {
+  ArgumentAxis,
+  CommonSeriesSettings,
+  Legend,
+  Series,
+  Tooltip,
+  ValueAxis,
+} from 'devextreme-react/chart';
 import { cn } from '@/shared/lib/helpers/cn';
 import { apiClient } from '@/shared/api/client';
 
@@ -27,6 +36,29 @@ const typeScale = [
   { cls: 'text-body-sm', label: 'body-sm' },
   { cls: 'text-body-xs', label: 'body-xs' },
   { cls: 'text-label', label: 'label' },
+];
+
+const dxTransactions = [
+  { id: 'TX-1001', pair: 'EUR → USD', amount: '1 250,00', status: 'PENDING', date: '2026-07-10' },
+  {
+    id: 'TX-1002',
+    pair: 'USD → PLN',
+    amount: '18 400,00',
+    status: 'FRAUD_REVIEW',
+    date: '2026-07-11',
+  },
+  { id: 'TX-1003', pair: 'GBP → EUR', amount: '640,00', status: 'COMPLETED', date: '2026-07-11' },
+  { id: 'TX-1004', pair: 'PLN → EUR', amount: '2 100,00', status: 'REJECTED', date: '2026-07-12' },
+];
+
+const dxRates = [
+  { date: '07-06', rate: 4.31 },
+  { date: '07-07', rate: 4.28 },
+  { date: '07-08', rate: 4.33 },
+  { date: '07-09', rate: 4.3 },
+  { date: '07-10', rate: 4.36 },
+  { date: '07-11', rate: 4.34 },
+  { date: '07-12', rate: 4.39 },
 ];
 
 const palette = [
@@ -159,6 +191,58 @@ function App() {
                 <span className="text-body-xs text-text-muted">{p.label}</span>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <h2 className="text-display-sm">DevExtreme swatch (Task 1.4)</h2>
+          <div className="border-border bg-bg-card overflow-x-auto rounded-xl border p-4">
+            <DataGrid
+              dataSource={dxTransactions}
+              keyExpr="id"
+              showBorders
+              columnAutoWidth
+            >
+              <Column
+                dataField="id"
+                caption="Referencja"
+              />
+              <Column
+                dataField="pair"
+                caption="Para"
+              />
+              <Column
+                dataField="amount"
+                caption="Kwota"
+              />
+              <Column
+                dataField="status"
+                caption="Status"
+              />
+              <Column
+                dataField="date"
+                caption="Data"
+              />
+            </DataGrid>
+          </div>
+          <div className="border-border bg-bg-card overflow-x-auto rounded-xl border p-4">
+            <Chart
+              dataSource={dxRates}
+              palette={['#35D07A']}
+            >
+              <CommonSeriesSettings
+                argumentField="date"
+                type="area"
+              />
+              <Series
+                valueField="rate"
+                name="EUR/PLN"
+              />
+              <ArgumentAxis />
+              <ValueAxis />
+              <Legend visible={false} />
+              <Tooltip enabled />
+            </Chart>
           </div>
         </section>
       </div>
