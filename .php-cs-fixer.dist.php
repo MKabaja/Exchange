@@ -5,6 +5,7 @@ declare(strict_types=1);
 $finder = new PhpCsFixer\Finder()
     ->in(__DIR__)
     ->exclude('var')
+    ->exclude('frontend')
     ->notPath([
         'config/bundles.php',
         'config/reference.php',
