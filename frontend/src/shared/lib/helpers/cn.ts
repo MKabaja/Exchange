@@ -1,5 +1,5 @@
-import { clsx, type ClassValue } from 'clsx'
-import { extendTailwindMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from 'clsx';
+import { extendTailwindMerge } from 'tailwind-merge';
 
 const themeColors = [
   'accent',
@@ -22,7 +22,7 @@ const themeColors = [
   'danger',
   'info',
   'focus',
-]
+];
 
 const themeFontSizes = [
   'display-2xl',
@@ -35,7 +35,7 @@ const themeFontSizes = [
   'body-sm',
   'body-xs',
   'label',
-]
+];
 
 const twMerge = extendTailwindMerge({
   extend: {
@@ -47,8 +47,8 @@ const twMerge = extendTailwindMerge({
       'font-size': themeFontSizes.map((size) => `text-${size}`),
     },
   },
-})
+});
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
