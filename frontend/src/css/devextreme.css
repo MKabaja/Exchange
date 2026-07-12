@@ -1,0 +1,21 @@
+@import 'devextreme/dist/css/dx.fluent.saas.dark.css';
+
+/* Custom swatch — Fluent SaaS Dark przefarbowany na paletę Exchange (DESIGN.md §4).
+   Referencje do tokenów z theme.css, żeby DESIGN.md był jedynym źródłem palety. */
+:root {
+  --dx-color-primary: var(--color-accent);
+  --dx-color-link: var(--color-accent-text);
+  --dx-color-main-bg: var(--color-bg-card);
+  --dx-component-color-bg: var(--color-bg-elevated);
+  --dx-color-text: var(--color-text-primary);
+  --dx-texteditor-color-text: var(--color-text-primary);
+  --dx-texteditor-color-label: var(--color-text-muted);
+  --dx-color-icon: var(--color-text-muted);
+  --dx-color-spin-icon: var(--color-accent);
+  --dx-color-border: var(--color-border);
+  --dx-color-separator: var(--color-border);
+  --dx-color-success: var(--color-success);
+  --dx-color-warning: var(--color-warning);
+  --dx-color-danger: var(--color-danger);
+  --dx-datagrid-row-alternation-bg: var(--color-bg-offset);
+}
