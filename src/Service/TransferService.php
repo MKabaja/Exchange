@@ -44,13 +44,12 @@ readonly class TransferService
         $toAmountFormatted = number_format($toAmount, 4, '.', '');
 
         $fromWallet->setBalance($fromWallet->getBalance() - (float) $fromAmount);
-        $toWallet->setBalance($toWallet->getBalance() + $toAmount);
+        
 
         $fromWallet->setLastActivityAt(new DateTimeImmutable());
         $this->walletRepository->save($fromWallet);
 
-        $toWallet->setLastActivityAt(new DateTimeImmutable());
-        $this->walletRepository->save($toWallet);
+        
 
         $transaction = Transaction::create(
             fromWalletId: $fromWalletId,
