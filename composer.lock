@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e7b968bb1f209865eb6ce947895fa989",
+    "content-hash": "ad8d73e8bc4c694ae94b97e11e60ca93",
     "packages": [
         {
             "name": "doctrine/dbal",

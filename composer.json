@@ -1,6 +1,6 @@
 {
-    "name": "droplabs/exchange-recruitment-task",
-    "description": "Exchange recruitment task",
+    "name": "mkabaja/exchange",
+    "description": "Money exchange project",
     "type": "project",
     "require": {
         "php": "^8.5",
