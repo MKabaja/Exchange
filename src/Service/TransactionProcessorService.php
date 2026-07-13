@@ -7,15 +7,19 @@ namespace App\Service;
 use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\TransactionStatus;
+use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 
 final readonly class TransactionProcessorService
 {
     public function __construct(
         private WalletRepositoryInterface $walletRepository,
         private TransactionRepositoryInterface $transactionRepository,
+        private CompanyWalletRepositoryInterface $companyWalletRepository,
+        private Connection $connection,
     ) {
     }
 
@@ -30,12 +34,21 @@ final readonly class TransactionProcessorService
             return;
         }
 
-        $this->updateWalletActivity($fromWallet);
-        $this->updateWalletActivity($toWallet);
+        $this->connection->transactional(function () use ($transaction, $fromWallet, $toWallet): void {
+            $toWallet->setBalance($toWallet->getBalance() + (float) $transaction->getToAmount());
 
-        $transaction->setStatus(TransactionStatus::COMPLETED);
-        $this->markAntiFraudCheckedIfRequired($transaction);
-        $this->transactionRepository->save($transaction);
+            $this->updateWalletActivity($fromWallet);
+            $this->updateWalletActivity($toWallet);
+
+            $this->companyWalletRepository->addToBalance(
+                $transaction->getToCurrency(),
+                $transaction->getSpread(),
+            );
+
+            $transaction->setStatus(TransactionStatus::COMPLETED);
+            $this->markAntiFraudCheckedIfRequired($transaction);
+            $this->transactionRepository->save($transaction);
+        });
     }
 
     public function reject(Transaction $transaction): void
