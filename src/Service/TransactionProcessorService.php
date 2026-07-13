@@ -54,21 +54,17 @@ final readonly class TransactionProcessorService
     public function reject(Transaction $transaction): void
     {
         $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
-        $toWallet = $this->walletRepository->findById($transaction->getToWalletId());
 
-        if (null !== $fromWallet) {
-            $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
-            $this->updateWalletActivity($fromWallet);
-        }
+        $this->connection->transactional(function () use ($transaction, $fromWallet): void {
+            if (null !== $fromWallet) {
+                $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
+                $this->updateWalletActivity($fromWallet);
+            }
 
-        if (null !== $toWallet) {
-            $toWallet->setBalance($toWallet->getBalance() - (float) $transaction->getToAmount());
-            $this->updateWalletActivity($toWallet);
-        }
-
-        $transaction->setStatus(TransactionStatus::REJECTED);
-        $this->markAntiFraudCheckedIfRequired($transaction);
-        $this->transactionRepository->save($transaction);
+            $transaction->setStatus(TransactionStatus::REJECTED);
+            $this->markAntiFraudCheckedIfRequired($transaction);
+            $this->transactionRepository->save($transaction);
+        });
     }
 
     private function updateWalletActivity(Wallet $wallet): void
