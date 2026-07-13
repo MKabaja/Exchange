@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\TransactionStatus;
+use App\Exception\InvalidTransferStateException;
 use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -25,6 +26,8 @@ final readonly class TransactionProcessorService
 
     public function complete(Transaction $transaction): void
     {
+        $this->ensureNotTerminal($transaction);
+
         $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
         $toWallet = $this->walletRepository->findById($transaction->getToWalletId());
 
@@ -53,6 +56,8 @@ final readonly class TransactionProcessorService
 
     public function reject(Transaction $transaction): void
     {
+        $this->ensureNotTerminal($transaction);
+
         $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
 
         $this->connection->transactional(function () use ($transaction, $fromWallet): void {
@@ -65,6 +70,14 @@ final readonly class TransactionProcessorService
             $this->markAntiFraudCheckedIfRequired($transaction);
             $this->transactionRepository->save($transaction);
         });
+    }
+
+    private function ensureNotTerminal(Transaction $transaction): void
+    {
+        $status = $transaction->getStatus();
+        if (TransactionStatus::COMPLETED === $status || TransactionStatus::REJECTED === $status) {
+            throw new InvalidTransferStateException($status);
+        }
     }
 
     private function updateWalletActivity(Wallet $wallet): void
