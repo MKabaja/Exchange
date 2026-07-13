@@ -11,6 +11,8 @@ interface WalletRepositoryInterface
 {
     public function findById(int $id): ?Wallet;
 
+    public function findByIdForUpdate(int $id): ?Wallet;
+
     /** @return Wallet[] */
     public function findByUserId(int $userId): array;
 

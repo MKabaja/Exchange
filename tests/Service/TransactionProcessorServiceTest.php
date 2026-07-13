@@ -54,7 +54,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, $fromWallet],
                 [2, $toWallet],
@@ -79,7 +79,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, $fromWallet],
                 [2, $toWallet],
@@ -106,7 +106,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, $fromWallet],
                 [2, $toWallet],
@@ -147,7 +147,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: true);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, $fromWallet],
                 [2, $toWallet],
@@ -174,7 +174,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, null],
                 [2, $toWallet],
@@ -204,7 +204,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturnMap([
                 [1, $fromWallet],
                 [2, null],
@@ -241,7 +241,7 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->walletRepository
             ->expects(self::once())
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->with(1)
             ->willReturn($fromWallet);
         $this->walletRepository
@@ -274,7 +274,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: true);
 
         $this->walletRepository
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->willReturn($fromWallet);
 
         $this->companyWalletRepository->expects(self::never())->method('addToBalance');
@@ -293,7 +293,7 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->walletRepository
             ->expects(self::once())
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->with(1)
             ->willReturn(null);
         $this->walletRepository->expects(self::never())->method('save');
@@ -316,7 +316,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
         $transaction->setStatus($status);
 
-        $this->walletRepository->expects(self::never())->method('findById');
+        $this->walletRepository->expects(self::never())->method('findByIdForUpdate');
         $this->walletRepository->expects(self::never())->method('save');
         $this->companyWalletRepository->expects(self::never())->method('addToBalance');
         $this->transactionRepository->expects(self::never())->method('save');
@@ -334,7 +334,7 @@ class TransactionProcessorServiceTest extends TestCase
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
         $transaction->setStatus($status);
 
-        $this->walletRepository->expects(self::never())->method('findById');
+        $this->walletRepository->expects(self::never())->method('findByIdForUpdate');
         $this->walletRepository->expects(self::never())->method('save');
         $this->companyWalletRepository->expects(self::never())->method('addToBalance');
         $this->transactionRepository->expects(self::never())->method('save');

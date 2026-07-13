@@ -28,16 +28,16 @@ final readonly class TransactionProcessorService
     {
         $this->ensureNotTerminal($transaction);
 
-        $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
-        $toWallet = $this->walletRepository->findById($transaction->getToWalletId());
+        $this->connection->transactional(function () use ($transaction): void {
+            $fromWallet = $this->walletRepository->findByIdForUpdate($transaction->getFromWalletId());
+            $toWallet = $this->walletRepository->findByIdForUpdate($transaction->getToWalletId());
 
-        if (null === $fromWallet || null === $toWallet) {
-            $this->reject($transaction);
+            if (null === $fromWallet || null === $toWallet) {
+                $this->rejectWithinTransaction($transaction, $fromWallet);
 
-            return;
-        }
+                return;
+            }
 
-        $this->connection->transactional(function () use ($transaction, $fromWallet, $toWallet): void {
             $toWallet->setBalance($toWallet->getBalance() + (float) $transaction->getToAmount());
 
             $this->updateWalletActivity($fromWallet);
@@ -58,18 +58,23 @@ final readonly class TransactionProcessorService
     {
         $this->ensureNotTerminal($transaction);
 
-        $fromWallet = $this->walletRepository->findById($transaction->getFromWalletId());
+        $this->connection->transactional(function () use ($transaction): void {
+            $fromWallet = $this->walletRepository->findByIdForUpdate($transaction->getFromWalletId());
 
-        $this->connection->transactional(function () use ($transaction, $fromWallet): void {
-            if (null !== $fromWallet) {
-                $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
-                $this->updateWalletActivity($fromWallet);
-            }
-
-            $transaction->setStatus(TransactionStatus::REJECTED);
-            $this->markAntiFraudCheckedIfRequired($transaction);
-            $this->transactionRepository->save($transaction);
+            $this->rejectWithinTransaction($transaction, $fromWallet);
         });
+    }
+
+    private function rejectWithinTransaction(Transaction $transaction, ?Wallet $fromWallet): void
+    {
+        if (null !== $fromWallet) {
+            $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
+            $this->updateWalletActivity($fromWallet);
+        }
+
+        $transaction->setStatus(TransactionStatus::REJECTED);
+        $this->markAntiFraudCheckedIfRequired($transaction);
+        $this->transactionRepository->save($transaction);
     }
 
     private function ensureNotTerminal(Transaction $transaction): void

@@ -25,12 +25,32 @@ readonly class WalletRepository implements WalletRepositoryInterface
      */
     public function findById(int $id): ?Wallet
     {
+        return $this->findByIdWithLock($id, false);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function findByIdForUpdate(int $id): ?Wallet
+    {
+        return $this->findByIdWithLock($id, true);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function findByIdWithLock(int $id, bool $forUpdate): ?Wallet
+    {
         $qb = $this->connection->createQueryBuilder();
 
         $qb
             ->select('*')
             ->from(self::TABLE_NAME)
             ->where('id = :id');
+
+        if ($forUpdate) {
+            $qb->forUpdate();
+        }
 
         $row = $this->connection->fetchAssociative($qb->getSQL(), ['id' => $id]);
 
