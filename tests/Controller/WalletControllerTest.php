@@ -65,6 +65,9 @@ class WalletControllerTest extends TestCase
         $response = $this->controller->list($user);
 
         self::assertSame(200, $response->getStatusCode());
+
+        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame('0.0000', $data[0]['balance']);
     }
 
     /**

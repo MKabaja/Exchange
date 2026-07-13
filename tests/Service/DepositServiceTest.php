@@ -43,7 +43,7 @@ class DepositServiceTest extends TestCase
 
         $result = $this->depositService->deposit($userId, 1, '500.00');
 
-        self::assertSame(500.0, $result->getBalance());
+        self::assertSame('500.0000', $result->getBalance());
         self::assertNotNull($result->getLastActivityAt());
     }
 
@@ -51,7 +51,7 @@ class DepositServiceTest extends TestCase
     {
         $userId = 1;
         $wallet = Wallet::create($userId, Currency::EUR);
-        $wallet->setBalance(200.0);
+        $wallet->setBalance('200.0000');
 
         $this->walletRepository
             ->method('findById')
@@ -59,7 +59,7 @@ class DepositServiceTest extends TestCase
 
         $this->depositService->deposit($userId, 1, '300.00');
 
-        self::assertSame(500.0, $wallet->getBalance());
+        self::assertSame('500.0000', $wallet->getBalance());
     }
 
     public function testDepositThrowsWhenWalletNotFound(): void

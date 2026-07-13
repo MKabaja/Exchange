@@ -51,7 +51,7 @@ class WalletServiceTest extends TestCase
 
         self::assertSame($userId, $wallet->getUserId());
         self::assertSame($currency, $wallet->getCurrency());
-        self::assertSame(0.0, $wallet->getBalance());
+        self::assertSame('0.0000', $wallet->getBalance());
         self::assertFalse($wallet->isBlocked());
     }
 
@@ -137,7 +137,7 @@ class WalletServiceTest extends TestCase
     public function testDeleteWalletThrowsWhenBalanceIsNonZero(): void
     {
         $wallet = Wallet::create(userId: 1, currency: Currency::EUR);
-        $wallet->setBalance(100.0);
+        $wallet->setBalance('100.0000');
 
         $this->walletRepository
             ->method('findById')

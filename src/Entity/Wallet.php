@@ -13,7 +13,7 @@ class Wallet
         private ?int $id,
         private readonly int $userId,
         private readonly Currency $currency,
-        private float $balance,
+        private string $balance,
         private bool $isBlocked,
         private ?DateTimeImmutable $lastActivityAt,
         private readonly DateTimeImmutable $createdAt,
@@ -26,7 +26,7 @@ class Wallet
             id: null,
             userId: $userId,
             currency: $currency,
-            balance: 0.0,
+            balance: '0.0000',
             isBlocked: false,
             lastActivityAt: null,
             createdAt: new DateTimeImmutable(),
@@ -48,7 +48,7 @@ class Wallet
         return $this->currency;
     }
 
-    public function getBalance(): float
+    public function getBalance(): string
     {
         return $this->balance;
     }
@@ -68,7 +68,7 @@ class Wallet
         return $this->createdAt;
     }
 
-    public function setBalance(float $balance): void
+    public function setBalance(string $balance): void
     {
         $this->balance = $balance;
     }

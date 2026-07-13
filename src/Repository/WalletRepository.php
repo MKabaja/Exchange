@@ -10,6 +10,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\ParameterType;
 use ReflectionClass;
 
 readonly class WalletRepository implements WalletRepositoryInterface
@@ -131,7 +132,7 @@ readonly class WalletRepository implements WalletRepositoryInterface
             id: (int) $row['id'],
             userId: (int) $row['user_id'],
             currency: Currency::from($row['currency']),
-            balance: (float) $row['balance'],
+            balance: (string) $row['balance'],
             isBlocked: (bool) $row['is_blocked'],
             lastActivityAt: null !== $row['last_activity_at'] ? new DateTimeImmutable($row['last_activity_at']) : null,
             createdAt: new DateTimeImmutable($row['created_at']),
@@ -167,7 +168,8 @@ readonly class WalletRepository implements WalletRepositoryInterface
                 'created_at' => $wallet->getCreatedAt()
                     ->setTimezone(timezone: new DateTimeZone('UTC'))
                     ->format('Y-m-d H:i:s'),
-            ]
+            ],
+            ['balance' => ParameterType::STRING],
         );
 
         $id = (int) $this->connection->lastInsertId();
@@ -198,7 +200,8 @@ readonly class WalletRepository implements WalletRepositoryInterface
                 'is_blocked' => (int) $wallet->isBlocked(),
                 'last_activity_at' => $wallet->getLastActivityAt()?->setTimezone(timezone: new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
                 'id' => $wallet->getId(),
-            ]
+            ],
+            ['balance' => ParameterType::STRING],
         );
     }
 }

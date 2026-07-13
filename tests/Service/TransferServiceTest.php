@@ -48,7 +48,7 @@ class TransferServiceTest extends TestCase
         $fromWallet = $this->createMock(Wallet::class);
         $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
         $fromWallet->method('getUserId')->willReturn($userId);
-        $fromWallet->method('getBalance')->willReturn(5000.0);
+        $fromWallet->method('getBalance')->willReturn('5000.0000');
 
         $toWallet = $this->createMock(Wallet::class);
         $toWallet->method('getCurrency')->willReturn(Currency::EUR);
@@ -99,10 +99,10 @@ class TransferServiceTest extends TestCase
     {
         $userId = 1;
         $fromWallet = Wallet::create($userId, Currency::PLN);
-        $fromWallet->setBalance(5000.0);
+        $fromWallet->setBalance('5000.0000');
 
         $toWallet = Wallet::create($userId, Currency::EUR);
-        $toWallet->setBalance(100.0);
+        $toWallet->setBalance('100.0000');
 
         $this->walletRepository
             ->method('findById')
@@ -116,15 +116,15 @@ class TransferServiceTest extends TestCase
 
         $this->transferService->transfer($userId, 1, 2, '1000.00');
 
-        self::assertSame(4000.0, $fromWallet->getBalance());
-        self::assertSame(100.0, $toWallet->getBalance());
+        self::assertSame('4000.0000', $fromWallet->getBalance());
+        self::assertSame('100.0000', $toWallet->getBalance());
     }
 
     public function testTransferUpdatesActivityAndPersistsOnlySourceWallet(): void
     {
         $userId = 1;
         $fromWallet = Wallet::create($userId, Currency::PLN);
-        $fromWallet->setBalance(5000.0);
+        $fromWallet->setBalance('5000.0000');
 
         $toWallet = Wallet::create($userId, Currency::EUR);
 
@@ -155,7 +155,7 @@ class TransferServiceTest extends TestCase
         $fromWallet = $this->createMock(Wallet::class);
         $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
         $fromWallet->method('getUserId')->willReturn($userId);
-        $fromWallet->method('getBalance')->willReturn(1_000_000.0);
+        $fromWallet->method('getBalance')->willReturn('1000000.0000');
 
         $toWallet = $this->createMock(Wallet::class);
         $toWallet->method('getCurrency')->willReturn(Currency::EUR);
@@ -181,7 +181,7 @@ class TransferServiceTest extends TestCase
     {
         $userId = 1;
         $fromWallet = Wallet::create($userId, Currency::PLN);
-        $fromWallet->setBalance(100.0);
+        $fromWallet->setBalance('100.0000');
 
         $toWallet = Wallet::create($userId, Currency::EUR);
 

@@ -10,6 +10,7 @@ use App\Exception\InsufficientFundsException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
+use App\Util\DecimalMath;
 use DateTimeImmutable;
 
 readonly class TransferService
@@ -43,7 +44,7 @@ readonly class TransferService
 
         $toAmountFormatted = number_format($toAmount, 4, '.', '');
 
-        $fromWallet->setBalance($fromWallet->getBalance() - (float) $fromAmount);
+        $fromWallet->setBalance(DecimalMath::subtract($fromWallet->getBalance(), $fromAmount));
 
         $fromWallet->setLastActivityAt(new DateTimeImmutable());
         $this->walletRepository->save($fromWallet);
@@ -77,7 +78,7 @@ readonly class TransferService
 
     private function ensureSufficientFunds(Wallet $wallet, string $amount): void
     {
-        if ($wallet->getBalance() < (float) $amount) {
+        if (DecimalMath::compare($wallet->getBalance(), $amount) < 0) {
             throw new InsufficientFundsException();
         }
     }
