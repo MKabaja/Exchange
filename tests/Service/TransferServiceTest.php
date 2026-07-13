@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
@@ -72,6 +73,16 @@ class TransferServiceTest extends TestCase
             ->with(250.0, Currency::PLN, Currency::EUR)
             ->willReturn('1.00');
 
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($fromWallet);
+
+        $this->transactionRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with(self::isInstanceOf(Transaction::class));
+
         $transaction = $this->transferService->transfer($userId, 1, 2, '1000.00');
 
         self::assertSame(TransactionStatus::PENDING, $transaction->getStatus());
@@ -84,13 +95,14 @@ class TransferServiceTest extends TestCase
         self::assertSame(Currency::EUR, $transaction->getToCurrency());
     }
 
-    public function testTransferMutatesWalletBalancesImmediately(): void
+    public function testTransferHoldsSourceFundsWithoutCreditingDestination(): void
     {
         $userId = 1;
         $fromWallet = Wallet::create($userId, Currency::PLN);
         $fromWallet->setBalance(5000.0);
 
         $toWallet = Wallet::create($userId, Currency::EUR);
+        $toWallet->setBalance(100.0);
 
         $this->walletRepository
             ->method('findById')
@@ -105,10 +117,10 @@ class TransferServiceTest extends TestCase
         $this->transferService->transfer($userId, 1, 2, '1000.00');
 
         self::assertSame(4000.0, $fromWallet->getBalance());
-        self::assertSame(249.0, $toWallet->getBalance());
+        self::assertSame(100.0, $toWallet->getBalance());
     }
 
-    public function testTransferUpdatesLastActivityAtOnBothWallets(): void
+    public function testTransferUpdatesActivityAndPersistsOnlySourceWallet(): void
     {
         $userId = 1;
         $fromWallet = Wallet::create($userId, Currency::PLN);
@@ -126,10 +138,15 @@ class TransferServiceTest extends TestCase
         $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
 
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('save')
+            ->with($fromWallet);
+
         $this->transferService->transfer($userId, 1, 2, '1000.00');
 
         self::assertNotNull($fromWallet->getLastActivityAt());
-        self::assertNotNull($toWallet->getLastActivityAt());
+        self::assertNull($toWallet->getLastActivityAt());
     }
 
     public function testTransferRequiresAntiFraudCheckForLargeAmount(): void
