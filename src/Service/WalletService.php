@@ -13,6 +13,7 @@ use App\Exception\WalletNotEmptyException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
+use App\Util\DecimalMath;
 
 readonly class WalletService
 {
@@ -40,7 +41,7 @@ readonly class WalletService
     {
         $wallet = $this->getUserWallet($walletId, $userId);
 
-        if (0.0 !== $wallet->getBalance()) {
+        if (0 !== DecimalMath::compare($wallet->getBalance(), '0')) {
             throw new WalletNotEmptyException($walletId);
         }
 

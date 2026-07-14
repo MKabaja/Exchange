@@ -8,11 +8,12 @@ use App\Entity\Wallet;
 use App\Exception\WalletBlockedException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\WalletRepositoryInterface;
+use App\Util\DecimalMath;
 use DateTimeImmutable;
 
 readonly class DepositService
 {
-    public const float MAX_AMOUNT = 10000.0;
+    public const string MAX_AMOUNT = '10000';
 
     public function __construct(
         private WalletRepositoryInterface $walletRepository,
@@ -30,7 +31,7 @@ readonly class DepositService
             throw new WalletBlockedException($walletId);
         }
 
-        $wallet->setBalance($wallet->getBalance() + (float) $amount);
+        $wallet->setBalance(DecimalMath::add($wallet->getBalance(), $amount));
         $wallet->setLastActivityAt(new DateTimeImmutable());
         $this->walletRepository->save($wallet);
 

@@ -12,7 +12,7 @@ class CompanyWallet
     public function __construct(
         private ?int $id,
         private readonly Currency $currency,
-        private float $balance,
+        private string $balance,
         private readonly DateTimeImmutable $createdAt,
         private DateTimeImmutable $updatedAt,
     ) {
@@ -25,7 +25,7 @@ class CompanyWallet
         return new self(
             id: null,
             currency: $currency,
-            balance: 0.0,
+            balance: '0.0000',
             createdAt: $now,
             updatedAt: $now,
         );
@@ -41,7 +41,7 @@ class CompanyWallet
         return $this->currency;
     }
 
-    public function getBalance(): float
+    public function getBalance(): string
     {
         return $this->balance;
     }
@@ -56,7 +56,7 @@ class CompanyWallet
         return $this->updatedAt;
     }
 
-    public function setBalance(float $balance): void
+    public function setBalance(string $balance): void
     {
         $this->balance = $balance;
     }

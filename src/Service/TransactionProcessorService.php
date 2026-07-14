@@ -11,6 +11,7 @@ use App\Exception\InvalidTransferStateException;
 use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
+use App\Util\DecimalMath;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 
@@ -38,7 +39,7 @@ final readonly class TransactionProcessorService
                 return;
             }
 
-            $toWallet->setBalance($toWallet->getBalance() + (float) $transaction->getToAmount());
+            $toWallet->setBalance(DecimalMath::add($toWallet->getBalance(), $transaction->getToAmount()));
 
             $this->updateWalletActivity($fromWallet);
             $this->updateWalletActivity($toWallet);
@@ -68,7 +69,7 @@ final readonly class TransactionProcessorService
     private function rejectWithinTransaction(Transaction $transaction, ?Wallet $fromWallet): void
     {
         if (null !== $fromWallet) {
-            $fromWallet->setBalance($fromWallet->getBalance() + (float) $transaction->getFromAmount());
+            $fromWallet->setBalance(DecimalMath::add($fromWallet->getBalance(), $transaction->getFromAmount()));
             $this->updateWalletActivity($fromWallet);
         }
 

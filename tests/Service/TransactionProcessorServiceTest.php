@@ -17,15 +17,16 @@ use Closure;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 #[AllowMockObjectsWithoutExpectations]
 class TransactionProcessorServiceTest extends TestCase
 {
-    private WalletRepositoryInterface $walletRepository;
-    private TransactionRepositoryInterface $transactionRepository;
-    private CompanyWalletRepositoryInterface $companyWalletRepository;
-    private Connection $connection;
+    private WalletRepositoryInterface&MockObject $walletRepository;
+    private TransactionRepositoryInterface&MockObject $transactionRepository;
+    private CompanyWalletRepositoryInterface&MockObject $companyWalletRepository;
+    private Connection&MockObject $connection;
     private TransactionProcessorService $transactionProcessorService;
 
     protected function setUp(): void
@@ -46,10 +47,10 @@ class TransactionProcessorServiceTest extends TestCase
     public function testCompleteCreditsDestinationWithoutDebitingSourceAgain(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $toWallet = Wallet::create(1, Currency::EUR);
-        $toWallet->setBalance(100.0);
+        $toWallet->setBalance('100.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -64,17 +65,17 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->transactionProcessorService->complete($transaction);
 
-        self::assertSame(400.0, $fromWallet->getBalance());
-        self::assertSame(125.0, $toWallet->getBalance());
+        self::assertSame('400.0000', $fromWallet->getBalance());
+        self::assertSame('125.0000', $toWallet->getBalance());
     }
 
     public function testCompleteCreditsCompanyWalletWithSpreadInDestinationCurrency(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $toWallet = Wallet::create(1, Currency::EUR);
-        $toWallet->setBalance(100.0);
+        $toWallet->setBalance('100.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -98,10 +99,10 @@ class TransactionProcessorServiceTest extends TestCase
     public function testCompleteUpdatesActivityAndPersistsBothWallets(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $toWallet = Wallet::create(1, Currency::EUR);
-        $toWallet->setBalance(100.0);
+        $toWallet->setBalance('100.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -140,7 +141,7 @@ class TransactionProcessorServiceTest extends TestCase
     public function testCompleteSetsAntiFraudCheckedAtWhenRequired(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $toWallet = Wallet::create(1, Currency::EUR);
 
@@ -169,7 +170,7 @@ class TransactionProcessorServiceTest extends TestCase
     public function testCompleteRejectsWithoutMutatingDestinationWhenSourceWalletNotFound(): void
     {
         $toWallet = Wallet::create(1, Currency::EUR);
-        $toWallet->setBalance(25.0);
+        $toWallet->setBalance('25.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -191,7 +192,7 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->transactionProcessorService->complete($transaction);
 
-        self::assertSame(25.0, $toWallet->getBalance());
+        self::assertSame('25.0000', $toWallet->getBalance());
         self::assertNull($toWallet->getLastActivityAt());
         self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
     }
@@ -199,7 +200,7 @@ class TransactionProcessorServiceTest extends TestCase
     public function testCompleteRefundsSourceWhenDestinationWalletNotFound(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -224,7 +225,7 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->transactionProcessorService->complete($transaction);
 
-        self::assertSame(500.0, $fromWallet->getBalance());
+        self::assertSame('500.0000', $fromWallet->getBalance());
         self::assertNotNull($fromWallet->getLastActivityAt());
         self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
     }
@@ -232,10 +233,10 @@ class TransactionProcessorServiceTest extends TestCase
     public function testRejectRefundsSourceWithoutMutatingDestinationOrCompanyWallet(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $toWallet = Wallet::create(1, Currency::EUR);
-        $toWallet->setBalance(25.0);
+        $toWallet->setBalance('25.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: false);
 
@@ -258,8 +259,8 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->transactionProcessorService->reject($transaction);
 
-        self::assertSame(500.0, $fromWallet->getBalance());
-        self::assertSame(25.0, $toWallet->getBalance());
+        self::assertSame('500.0000', $fromWallet->getBalance());
+        self::assertSame('25.0000', $toWallet->getBalance());
         self::assertNotNull($fromWallet->getLastActivityAt());
         self::assertNull($toWallet->getLastActivityAt());
         self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
@@ -269,7 +270,7 @@ class TransactionProcessorServiceTest extends TestCase
     public function testRejectSetsAntiFraudCheckedAtWhenRequired(): void
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
-        $fromWallet->setBalance(400.0);
+        $fromWallet->setBalance('400.0000');
 
         $transaction = $this->makeTransaction(requiresAntiFraudCheck: true);
 
@@ -282,7 +283,7 @@ class TransactionProcessorServiceTest extends TestCase
 
         $this->transactionProcessorService->reject($transaction);
 
-        self::assertSame(500.0, $fromWallet->getBalance());
+        self::assertSame('500.0000', $fromWallet->getBalance());
         self::assertSame(TransactionStatus::REJECTED, $transaction->getStatus());
         self::assertNotNull($transaction->getAntiFraudCheckedAt());
     }
@@ -346,6 +347,9 @@ class TransactionProcessorServiceTest extends TestCase
         $this->transactionProcessorService->reject($transaction);
     }
 
+    /**
+     * @return iterable<string, array{TransactionStatus}>
+     */
     public static function terminalStatuses(): iterable
     {
         yield 'completed' => [TransactionStatus::COMPLETED];

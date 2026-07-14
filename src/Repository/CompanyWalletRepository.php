@@ -10,6 +10,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\ParameterType;
 
 readonly class CompanyWalletRepository implements CompanyWalletRepositoryInterface
 {
@@ -79,12 +80,16 @@ readonly class CompanyWalletRepository implements CompanyWalletRepositoryInterfa
                     'updated_at' => ':updated_at',
                 ]);
 
-            $this->connection->executeStatement($qb->getSQL(), [
-                'currency' => $currency->value,
-                'balance' => $amount,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+            $this->connection->executeStatement(
+                $qb->getSQL(),
+                [
+                    'currency' => $currency->value,
+                    'balance' => $amount,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                ['balance' => ParameterType::STRING],
+            );
         } else {
             $qb
                 ->update(self::TABLE_NAME)
@@ -92,11 +97,15 @@ readonly class CompanyWalletRepository implements CompanyWalletRepositoryInterfa
                 ->set('updated_at', ':updated_at')
                 ->where('currency = :currency');
 
-            $this->connection->executeStatement($qb->getSQL(), [
-                'amount' => $amount,
-                'updated_at' => $now,
-                'currency' => $currency->value,
-            ]);
+            $this->connection->executeStatement(
+                $qb->getSQL(),
+                [
+                    'amount' => $amount,
+                    'updated_at' => $now,
+                    'currency' => $currency->value,
+                ],
+                ['amount' => ParameterType::STRING],
+            );
         }
     }
 
@@ -105,7 +114,7 @@ readonly class CompanyWalletRepository implements CompanyWalletRepositoryInterfa
         return new CompanyWallet(
             id: (int) $row['id'],
             currency: Currency::from($row['currency']),
-            balance: (float) $row['balance'],
+            balance: (string) $row['balance'],
             createdAt: new DateTimeImmutable($row['created_at']),
             updatedAt: new DateTimeImmutable($row['updated_at']),
         );
