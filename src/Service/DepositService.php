@@ -13,7 +13,7 @@ use DateTimeImmutable;
 
 readonly class DepositService
 {
-    public const float MAX_AMOUNT = 10000.0;
+    public const string MAX_AMOUNT = '10000';
 
     public function __construct(
         private WalletRepositoryInterface $walletRepository,

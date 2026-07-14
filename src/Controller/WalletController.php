@@ -18,6 +18,7 @@ use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
 use App\Service\WalletService;
+use App\Util\DecimalMath;
 use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -87,7 +88,7 @@ final class WalletController extends AbstractController
             }
         }
 
-        if (!is_numeric($data['amount']) || (float) $data['amount'] <= 0) {
+        if (!$this->isValidAmount($data['amount'])) {
             return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -119,11 +120,11 @@ final class WalletController extends AbstractController
             return new JsonResponse(['error' => 'Missing required field: amount.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if (!is_numeric($data['amount']) || (float) $data['amount'] <= 0) {
+        if (!$this->isValidAmount($data['amount'])) {
             return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ((float) $data['amount'] > DepositService::MAX_AMOUNT) {
+        if (DecimalMath::compare($data['amount'], DepositService::MAX_AMOUNT) > 0) {
             return new JsonResponse(['error' => sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT)], Response::HTTP_BAD_REQUEST);
         }
 
@@ -154,5 +155,14 @@ final class WalletController extends AbstractController
         } catch (WalletNotEmptyException|WalletHasPendingTransactionsException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+    }
+
+    private function isValidAmount(mixed $amount): bool
+    {
+        if (!is_string($amount) || 1 !== preg_match('/\A\d+(?:\.\d{1,4})?\z/', $amount)) {
+            return false;
+        }
+
+        return DecimalMath::compare($amount, '0') > 0;
     }
 }
