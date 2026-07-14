@@ -16,6 +16,8 @@ use App\Service\ExchangeRateService;
 use App\Service\SpreadService;
 use App\Service\TransferService;
 use App\Util\DecimalMath;
+use Closure;
+use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -27,6 +29,7 @@ class TransferServiceTest extends TestCase
     private TransactionRepositoryInterface&MockObject $transactionRepository;
     private ExchangeRateService&MockObject $exchangeRateService;
     private SpreadService&MockObject $spreadService;
+    private Connection&MockObject $connection;
     private TransferService $transferService;
 
     protected function setUp(): void
@@ -35,12 +38,19 @@ class TransferServiceTest extends TestCase
         $this->transactionRepository = $this->createMock(TransactionRepositoryInterface::class);
         $this->exchangeRateService = $this->createMock(ExchangeRateService::class);
         $this->spreadService = $this->createMock(SpreadService::class);
+        $this->connection = $this->createMock(Connection::class);
+
+        $this->connection
+            ->expects(self::once())
+            ->method('transactional')
+            ->willReturnCallback(static fn (Closure $callback): mixed => $callback());
 
         $this->transferService = new TransferService(
             $this->walletRepository,
             $this->transactionRepository,
             $this->exchangeRateService,
             $this->spreadService,
+            $this->connection,
         );
     }
 
@@ -58,12 +68,7 @@ class TransferServiceTest extends TestCase
         $toWallet->method('getCurrency')->willReturn(Currency::EUR);
         $toWallet->method('getUserId')->willReturn($userId);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         $this->exchangeRateService
             ->expects(self::exactly(2))
@@ -108,12 +113,7 @@ class TransferServiceTest extends TestCase
         $toWallet = Wallet::create($userId, Currency::EUR);
         $toWallet->setBalance('100.0000');
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
@@ -132,12 +132,7 @@ class TransferServiceTest extends TestCase
 
         $toWallet = Wallet::create($userId, Currency::EUR);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
@@ -165,12 +160,7 @@ class TransferServiceTest extends TestCase
         $toWallet->method('getCurrency')->willReturn(Currency::EUR);
         $toWallet->method('getUserId')->willReturn($userId);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         // 100000 PLN * 0.25 = 25000 EUR > 15000
         $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
@@ -193,12 +183,7 @@ class TransferServiceTest extends TestCase
         $toWallet->method('getCurrency')->willReturn(Currency::PLN);
         $toWallet->method('getUserId')->willReturn($userId);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         // 10000 USD * 0.86 = 8600 EUR < 15000
         $this->exchangeRateService
@@ -227,12 +212,7 @@ class TransferServiceTest extends TestCase
         $toWallet->method('getCurrency')->willReturn(Currency::PLN);
         $toWallet->method('getUserId')->willReturn($userId);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         // 15000 GBP * 1.0 = 15000 EUR == threshold
         $this->exchangeRateService
@@ -261,12 +241,7 @@ class TransferServiceTest extends TestCase
         $toWallet->method('getCurrency')->willReturn(Currency::GBP);
         $toWallet->method('getUserId')->willReturn($userId);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         // 16000 EUR * 0.868 = 13888 GBP destination (< 15000), but source value is 16000 EUR >= 15000
         $this->exchangeRateService
@@ -292,12 +267,7 @@ class TransferServiceTest extends TestCase
 
         $toWallet = Wallet::create($userId, Currency::EUR);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         $this->walletRepository->expects(self::never())->method('save');
         $this->transactionRepository->expects(self::never())->method('save');
@@ -311,7 +281,7 @@ class TransferServiceTest extends TestCase
     {
         $this->walletRepository
             ->expects($this->once())
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->with(99)
             ->willReturn(null);
 
@@ -327,12 +297,7 @@ class TransferServiceTest extends TestCase
     {
         $fromWallet = Wallet::create(1, Currency::PLN);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [99, null],
-            ]);
+        $this->mockWallets($fromWallet, null, toWalletId: 99);
 
         $this->transactionRepository->expects(self::never())->method('save');
 
@@ -348,7 +313,7 @@ class TransferServiceTest extends TestCase
 
         $this->walletRepository
             ->expects($this->once())
-            ->method('findById')
+            ->method('findByIdForUpdate')
             ->with(1)
             ->willReturn($fromWallet);
 
@@ -365,12 +330,7 @@ class TransferServiceTest extends TestCase
         $fromWallet = Wallet::create(1, Currency::PLN);
         $toWallet = Wallet::create(2, Currency::EUR);
 
-        $this->walletRepository
-            ->method('findById')
-            ->willReturnMap([
-                [1, $fromWallet],
-                [2, $toWallet],
-            ]);
+        $this->mockWallets($fromWallet, $toWallet);
 
         $this->transactionRepository->expects(self::never())->method('save');
 
@@ -378,5 +338,23 @@ class TransferServiceTest extends TestCase
         $this->expectExceptionMessage('Wallet 2 not found.');
 
         $this->transferService->transfer(1, 1, 2, '100.00');
+    }
+
+    private function mockWallets(
+        ?Wallet $fromWallet,
+        ?Wallet $toWallet,
+        int $fromWalletId = 1,
+        int $toWalletId = 2,
+    ): void {
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('findByIdForUpdate')
+            ->with($fromWalletId)
+            ->willReturn($fromWallet);
+        $this->walletRepository
+            ->expects(self::once())
+            ->method('findById')
+            ->with($toWalletId)
+            ->willReturn($toWallet);
     }
 }
