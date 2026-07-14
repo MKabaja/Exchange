@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Transaction;
 use App\Entity\Wallet;
+use App\Enum\Currency;
 use App\Exception\InsufficientFundsException;
 use App\Exception\WalletNotFoundException;
 use App\Repository\TransactionRepositoryInterface;
@@ -57,7 +58,7 @@ readonly class TransferService
             toCurrency: $toCurrency,
             spread: DecimalMath::round($spread, DecimalMath::AMOUNT_SCALE),
             exchangeRate: $exchangeRate,
-            requiresAntiFraudCheck: DecimalMath::compare($toAmount, '15000') > 0,
+            requiresAntiFraudCheck: $this->exceedsAntiFraudThreshold($fromAmount, $fromCurrency),
         );
 
         $this->transactionRepository->save($transaction);
@@ -80,5 +81,13 @@ readonly class TransferService
         if (DecimalMath::compare($wallet->getBalance(), $amount) < 0) {
             throw new InsufficientFundsException();
         }
+    }
+
+    private function exceedsAntiFraudThreshold(string $fromAmount, Currency $fromCurrency): bool
+    {
+        $eurRate = $this->exchangeRateService->getExchangeRateBetween($fromCurrency, Currency::EUR);
+        $eurValue = DecimalMath::multiply($fromAmount, $eurRate, DecimalMath::CALC_SCALE);
+
+        return DecimalMath::compare($eurValue, '15000', DecimalMath::CALC_SCALE) >= 0;
     }
 }

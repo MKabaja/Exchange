@@ -17,15 +17,16 @@ use Closure;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 #[AllowMockObjectsWithoutExpectations]
 class TransactionProcessorServiceTest extends TestCase
 {
-    private WalletRepositoryInterface $walletRepository;
-    private TransactionRepositoryInterface $transactionRepository;
-    private CompanyWalletRepositoryInterface $companyWalletRepository;
-    private Connection $connection;
+    private WalletRepositoryInterface&MockObject $walletRepository;
+    private TransactionRepositoryInterface&MockObject $transactionRepository;
+    private CompanyWalletRepositoryInterface&MockObject $companyWalletRepository;
+    private Connection&MockObject $connection;
     private TransactionProcessorService $transactionProcessorService;
 
     protected function setUp(): void
@@ -346,6 +347,9 @@ class TransactionProcessorServiceTest extends TestCase
         $this->transactionProcessorService->reject($transaction);
     }
 
+    /**
+     * @return iterable<string, array{TransactionStatus}>
+     */
     public static function terminalStatuses(): iterable
     {
         yield 'completed' => [TransactionStatus::COMPLETED];

@@ -19,6 +19,7 @@ use App\Service\TransferService;
 use App\Service\WalletService;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Throwable;
@@ -26,10 +27,10 @@ use Throwable;
 #[AllowMockObjectsWithoutExpectations]
 class WalletControllerTest extends TestCase
 {
-    private WalletService $walletService;
-    private WalletRepositoryInterface $walletRepository;
-    private TransferService $transferService;
-    private DepositService $depositService;
+    private WalletService&MockObject $walletService;
+    private WalletRepositoryInterface&MockObject $walletRepository;
+    private TransferService&MockObject $transferService;
+    private DepositService&MockObject $depositService;
     private WalletController $controller;
 
     protected function setUp(): void

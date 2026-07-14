@@ -17,15 +17,16 @@ use App\Service\SpreadService;
 use App\Service\TransferService;
 use App\Util\DecimalMath;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 #[AllowMockObjectsWithoutExpectations]
 class TransferServiceTest extends TestCase
 {
-    private WalletRepositoryInterface $walletRepository;
-    private TransactionRepositoryInterface $transactionRepository;
-    private ExchangeRateService $exchangeRateService;
-    private SpreadService $spreadService;
+    private WalletRepositoryInterface&MockObject $walletRepository;
+    private TransactionRepositoryInterface&MockObject $transactionRepository;
+    private ExchangeRateService&MockObject $exchangeRateService;
+    private SpreadService&MockObject $spreadService;
     private TransferService $transferService;
 
     protected function setUp(): void
@@ -65,7 +66,7 @@ class TransferServiceTest extends TestCase
             ]);
 
         $this->exchangeRateService
-            ->expects(self::once())
+            ->expects(self::exactly(2))
             ->method('getExchangeRateBetween')
             ->with(Currency::PLN, Currency::EUR)
             ->willReturn('0.250000');
@@ -178,6 +179,109 @@ class TransferServiceTest extends TestCase
         $transaction = $this->transferService->transfer($userId, 1, 2, '100000.00');
 
         self::assertTrue($transaction->requiresAntiFraudCheck());
+    }
+
+    public function testTransferDoesNotFlagWhenEurValueBelowThreshold(): void
+    {
+        $userId = 1;
+        $fromWallet = $this->createMock(Wallet::class);
+        $fromWallet->method('getCurrency')->willReturn(Currency::USD);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn('20000.0000');
+
+        $toWallet = $this->createMock(Wallet::class);
+        $toWallet->method('getCurrency')->willReturn(Currency::PLN);
+        $toWallet->method('getUserId')->willReturn($userId);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        // 10000 USD * 0.86 = 8600 EUR < 15000
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::USD, Currency::PLN, '3.646700'],
+                [Currency::USD, Currency::EUR, '0.860000'],
+            ]);
+        $this->spreadService->method('calculateSpread')->willReturn('0.00');
+
+        $transaction = $this->transferService->transfer($userId, 1, 2, '10000.00');
+
+        self::assertFalse($transaction->requiresAntiFraudCheck());
+        self::assertSame(TransactionStatus::PENDING, $transaction->getStatus());
+    }
+
+    public function testTransferFlagsWhenEurValueExactlyAtThreshold(): void
+    {
+        $userId = 1;
+        $fromWallet = $this->createMock(Wallet::class);
+        $fromWallet->method('getCurrency')->willReturn(Currency::GBP);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn('20000.0000');
+
+        $toWallet = $this->createMock(Wallet::class);
+        $toWallet->method('getCurrency')->willReturn(Currency::PLN);
+        $toWallet->method('getUserId')->willReturn($userId);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        // 15000 GBP * 1.0 = 15000 EUR == threshold
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::GBP, Currency::PLN, '4.881000'],
+                [Currency::GBP, Currency::EUR, '1.000000'],
+            ]);
+        $this->spreadService->method('calculateSpread')->willReturn('0.00');
+
+        $transaction = $this->transferService->transfer($userId, 1, 2, '15000.00');
+
+        self::assertTrue($transaction->requiresAntiFraudCheck());
+        self::assertSame(TransactionStatus::FRAUD_REVIEW, $transaction->getStatus());
+    }
+
+    public function testTransferFlagsWhenEurValueAboveThresholdDespiteSmallDestinationAmount(): void
+    {
+        $userId = 1;
+        $fromWallet = $this->createMock(Wallet::class);
+        $fromWallet->method('getCurrency')->willReturn(Currency::EUR);
+        $fromWallet->method('getUserId')->willReturn($userId);
+        $fromWallet->method('getBalance')->willReturn('20000.0000');
+
+        $toWallet = $this->createMock(Wallet::class);
+        $toWallet->method('getCurrency')->willReturn(Currency::GBP);
+        $toWallet->method('getUserId')->willReturn($userId);
+
+        $this->walletRepository
+            ->method('findById')
+            ->willReturnMap([
+                [1, $fromWallet],
+                [2, $toWallet],
+            ]);
+
+        // 16000 EUR * 0.868 = 13888 GBP destination (< 15000), but source value is 16000 EUR >= 15000
+        $this->exchangeRateService
+            ->method('getExchangeRateBetween')
+            ->willReturnMap([
+                [Currency::EUR, Currency::GBP, '0.868000'],
+                [Currency::EUR, Currency::EUR, '1.000000'],
+            ]);
+        $this->spreadService->method('calculateSpread')->willReturn('0.00');
+
+        $transaction = $this->transferService->transfer($userId, 1, 2, '16000.00');
+
+        self::assertSame('13888.0000', $transaction->getToAmount());
+        self::assertTrue($transaction->requiresAntiFraudCheck());
+        self::assertSame(TransactionStatus::FRAUD_REVIEW, $transaction->getStatus());
     }
 
     public function testTransferThrowsWhenInsufficientFunds(): void
