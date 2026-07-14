@@ -15,6 +15,7 @@ use App\Repository\WalletRepositoryInterface;
 use App\Service\ExchangeRateService;
 use App\Service\SpreadService;
 use App\Service\TransferService;
+use App\Util\DecimalMath;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
@@ -45,6 +46,8 @@ class TransferServiceTest extends TestCase
     public function testTransferCreatesTransactionWithCorrectData(): void
     {
         $userId = 1;
+        $expectedRawToAmount = DecimalMath::multiply('1000.00', '0.250000', DecimalMath::CALC_SCALE);
+
         $fromWallet = $this->createMock(Wallet::class);
         $fromWallet->method('getCurrency')->willReturn(Currency::PLN);
         $fromWallet->method('getUserId')->willReturn($userId);
@@ -65,12 +68,12 @@ class TransferServiceTest extends TestCase
             ->expects(self::once())
             ->method('getExchangeRateBetween')
             ->with(Currency::PLN, Currency::EUR)
-            ->willReturn(0.25);
+            ->willReturn('0.250000');
 
         $this->spreadService
             ->expects(self::once())
             ->method('calculateSpread')
-            ->with(250.0, Currency::PLN, Currency::EUR)
+            ->with($expectedRawToAmount, Currency::PLN, Currency::EUR)
             ->willReturn('1.00');
 
         $this->walletRepository
@@ -90,7 +93,7 @@ class TransferServiceTest extends TestCase
         self::assertSame('1000.00', $transaction->getFromAmount());
         self::assertSame('249.0000', $transaction->getToAmount());
         self::assertSame('0.250000', $transaction->getExchangeRate());
-        self::assertSame('1.00', $transaction->getSpread());
+        self::assertSame('1.0000', $transaction->getSpread());
         self::assertSame(Currency::PLN, $transaction->getFromCurrency());
         self::assertSame(Currency::EUR, $transaction->getToCurrency());
     }
@@ -111,7 +114,7 @@ class TransferServiceTest extends TestCase
                 [2, $toWallet],
             ]);
 
-        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
 
         $this->transferService->transfer($userId, 1, 2, '1000.00');
@@ -135,7 +138,7 @@ class TransferServiceTest extends TestCase
                 [2, $toWallet],
             ]);
 
-        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
         $this->spreadService->method('calculateSpread')->willReturn('1.00');
 
         $this->walletRepository
@@ -169,7 +172,7 @@ class TransferServiceTest extends TestCase
             ]);
 
         // 100000 PLN * 0.25 = 25000 EUR > 15000
-        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn(0.25);
+        $this->exchangeRateService->method('getExchangeRateBetween')->willReturn('0.250000');
         $this->spreadService->method('calculateSpread')->willReturn('0.00');
 
         $transaction = $this->transferService->transfer($userId, 1, 2, '100000.00');

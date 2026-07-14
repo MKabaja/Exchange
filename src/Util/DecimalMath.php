@@ -6,6 +6,18 @@ namespace App\Util;
 
 use RoundingMode;
 
+/**
+ * Fixed-point decimal arithmetic for monetary values.
+ *
+ * This is the single place in the codebase allowed to call the native `bc*` functions.
+ * All amounts are passed in and returned as decimal strings — never as floats — so that
+ * money never goes through IEEE-754 rounding.
+ *
+ * Callers pick a scale through the constants to express intent: intermediate steps run at
+ * `CALC_SCALE` to avoid losing precision, and only the final result is rounded to the
+ * domain scale (`AMOUNT_SCALE` for amounts — matching the DB `DECIMAL(15,4)` — and
+ * `RATE_SCALE` for exchange rates). `divide()` throws `\DivisionByZeroError` on a zero divisor.
+ */
 final class DecimalMath
 {
     public const int AMOUNT_SCALE = 4;

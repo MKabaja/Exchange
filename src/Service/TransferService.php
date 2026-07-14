@@ -38,11 +38,10 @@ readonly class TransferService
         $toCurrency = $toWallet->getCurrency();
 
         $exchangeRate = $this->exchangeRateService->getExchangeRateBetween($fromCurrency, $toCurrency);
-        $rawToAmount = (float) $fromAmount * $exchangeRate;
+        $rawToAmount = DecimalMath::multiply($fromAmount, $exchangeRate, DecimalMath::CALC_SCALE);
         $spread = $this->spreadService->calculateSpread($rawToAmount, $fromCurrency, $toCurrency);
-        $toAmount = $rawToAmount - (float) $spread;
-
-        $toAmountFormatted = number_format($toAmount, 4, '.', '');
+        $exactToAmount = DecimalMath::subtract($rawToAmount, $spread, DecimalMath::CALC_SCALE);
+        $toAmount = DecimalMath::round($exactToAmount, DecimalMath::AMOUNT_SCALE);
 
         $fromWallet->setBalance(DecimalMath::subtract($fromWallet->getBalance(), $fromAmount));
 
@@ -53,12 +52,12 @@ readonly class TransferService
             fromWalletId: $fromWalletId,
             toWalletId: $toWalletId,
             fromAmount: $fromAmount,
-            toAmount: $toAmountFormatted,
+            toAmount: $toAmount,
             fromCurrency: $fromCurrency,
             toCurrency: $toCurrency,
-            spread: $spread,
-            exchangeRate: number_format($exchangeRate, 6, '.', ''),
-            requiresAntiFraudCheck: $toAmount > 15_000,
+            spread: DecimalMath::round($spread, DecimalMath::AMOUNT_SCALE),
+            exchangeRate: $exchangeRate,
+            requiresAntiFraudCheck: DecimalMath::compare($toAmount, '15000') > 0,
         );
 
         $this->transactionRepository->save($transaction);
