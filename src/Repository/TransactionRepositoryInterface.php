@@ -11,6 +11,8 @@ interface TransactionRepositoryInterface
 {
     public function findById(int $id): ?Transaction;
 
+    public function findByIdForUpdate(int $id): ?Transaction;
+
     /** @return Transaction[] */
     public function findByWalletId(int $walletId): array;
 

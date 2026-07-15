@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Transaction;
 use App\Enum\TransactionStatus;
 use App\Repository\TransactionRepositoryInterface;
 use App\Service\TransactionProcessorService;
+use LogicException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -37,12 +39,12 @@ final class ProcessTransactionsCommand extends Command
         }
 
         foreach ($pending as $transaction) {
-            $this->transactionProcessorService->complete($transaction);
+            $processedTransaction = $this->transactionProcessorService->complete($this->getTransactionId($transaction));
 
-            if (TransactionStatus::COMPLETED === $transaction->getStatus()) {
-                $io->success(sprintf('Transaction #%d completed.', $transaction->getId()));
+            if (TransactionStatus::COMPLETED === $processedTransaction->getStatus()) {
+                $io->success(sprintf('Transaction #%d completed.', $processedTransaction->getId()));
             } else {
-                $io->warning(sprintf('Transaction #%d rejected (wallet not found).', $transaction->getId()));
+                $io->warning(sprintf('Transaction #%d rejected (wallet not found).', $processedTransaction->getId()));
             }
         }
 
@@ -60,19 +62,24 @@ final class ProcessTransactionsCommand extends Command
             $approved = $io->confirm('Approve this transaction?');
 
             if ($approved) {
-                $this->transactionProcessorService->complete($transaction);
+                $processedTransaction = $this->transactionProcessorService->complete($this->getTransactionId($transaction));
 
-                if (TransactionStatus::COMPLETED === $transaction->getStatus()) {
-                    $io->success(sprintf('Transaction #%d approved and completed.', $transaction->getId()));
+                if (TransactionStatus::COMPLETED === $processedTransaction->getStatus()) {
+                    $io->success(sprintf('Transaction #%d approved and completed.', $processedTransaction->getId()));
                 } else {
-                    $io->warning(sprintf('Transaction #%d rejected (wallet not found).', $transaction->getId()));
+                    $io->warning(sprintf('Transaction #%d rejected (wallet not found).', $processedTransaction->getId()));
                 }
             } else {
-                $this->transactionProcessorService->reject($transaction);
-                $io->warning(sprintf('Transaction #%d rejected.', $transaction->getId()));
+                $processedTransaction = $this->transactionProcessorService->reject($this->getTransactionId($transaction));
+                $io->warning(sprintf('Transaction #%d rejected.', $processedTransaction->getId()));
             }
         }
 
         return Command::SUCCESS;
+    }
+
+    private function getTransactionId(Transaction $transaction): int
+    {
+        return $transaction->getId() ?? throw new LogicException('Persisted transaction must have an ID.');
     }
 }

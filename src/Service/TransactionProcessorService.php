@@ -8,6 +8,7 @@ use App\Entity\Transaction;
 use App\Entity\Wallet;
 use App\Enum\TransactionStatus;
 use App\Exception\InvalidTransferStateException;
+use App\Exception\TransactionNotFoundException;
 use App\Repository\CompanyWalletRepositoryInterface;
 use App\Repository\TransactionRepositoryInterface;
 use App\Repository\WalletRepositoryInterface;
@@ -25,18 +26,18 @@ final readonly class TransactionProcessorService
     ) {
     }
 
-    public function complete(Transaction $transaction): void
+    public function complete(int $transactionId): Transaction
     {
-        $this->ensureNotTerminal($transaction);
+        return $this->connection->transactional(function () use ($transactionId): Transaction {
+            $transaction = $this->getTransactionForUpdate($transactionId);
+            $this->ensureNotTerminal($transaction);
 
-        $this->connection->transactional(function () use ($transaction): void {
-            $fromWallet = $this->walletRepository->findByIdForUpdate($transaction->getFromWalletId());
-            $toWallet = $this->walletRepository->findByIdForUpdate($transaction->getToWalletId());
+            [$fromWallet, $toWallet] = $this->getWalletsForUpdate($transaction);
 
             if (null === $fromWallet || null === $toWallet) {
                 $this->rejectWithinTransaction($transaction, $fromWallet);
 
-                return;
+                return $transaction;
             }
 
             $toWallet->setBalance(DecimalMath::add($toWallet->getBalance(), $transaction->getToAmount()));
@@ -52,18 +53,49 @@ final readonly class TransactionProcessorService
             $transaction->setStatus(TransactionStatus::COMPLETED);
             $this->markAntiFraudCheckedIfRequired($transaction);
             $this->transactionRepository->save($transaction);
+
+            return $transaction;
         });
     }
 
-    public function reject(Transaction $transaction): void
+    public function reject(int $transactionId): Transaction
     {
-        $this->ensureNotTerminal($transaction);
-
-        $this->connection->transactional(function () use ($transaction): void {
+        return $this->connection->transactional(function () use ($transactionId): Transaction {
+            $transaction = $this->getTransactionForUpdate($transactionId);
+            $this->ensureNotTerminal($transaction);
             $fromWallet = $this->walletRepository->findByIdForUpdate($transaction->getFromWalletId());
 
             $this->rejectWithinTransaction($transaction, $fromWallet);
+
+            return $transaction;
         });
+    }
+
+    private function getTransactionForUpdate(int $transactionId): Transaction
+    {
+        $transaction = $this->transactionRepository->findByIdForUpdate($transactionId);
+        if (null === $transaction) {
+            throw new TransactionNotFoundException($transactionId);
+        }
+
+        return $transaction;
+    }
+
+    /** @return array{?Wallet, ?Wallet} */
+    private function getWalletsForUpdate(Transaction $transaction): array
+    {
+        $walletIds = [$transaction->getFromWalletId(), $transaction->getToWalletId()];
+        sort($walletIds, SORT_NUMERIC);
+
+        $wallets = [];
+        foreach (array_unique($walletIds) as $walletId) {
+            $wallets[$walletId] = $this->walletRepository->findByIdForUpdate($walletId);
+        }
+
+        return [
+            $wallets[$transaction->getFromWalletId()],
+            $wallets[$transaction->getToWalletId()],
+        ];
     }
 
     private function rejectWithinTransaction(Transaction $transaction, ?Wallet $fromWallet): void

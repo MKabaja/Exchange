@@ -26,12 +26,32 @@ readonly class TransactionRepository implements TransactionRepositoryInterface
      */
     public function findById(int $id): ?Transaction
     {
+        return $this->findByIdWithLock($id, false);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function findByIdForUpdate(int $id): ?Transaction
+    {
+        return $this->findByIdWithLock($id, true);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function findByIdWithLock(int $id, bool $forUpdate): ?Transaction
+    {
         $qb = $this->connection->createQueryBuilder();
 
         $qb
             ->select('*')
             ->from(self::TABLE_NAME)
             ->where('id = :id');
+
+        if ($forUpdate) {
+            $qb->forUpdate();
+        }
 
         $row = $this->connection->fetchAssociative($qb->getSQL(), ['id' => $id]);
 
