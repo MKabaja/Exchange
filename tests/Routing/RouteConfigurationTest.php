@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Routing;
 
+use App\Controller\TransactionController;
 use App\Controller\WalletController;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -51,11 +52,13 @@ final class RouteConfigurationTest extends KernelTestCase
             'app_wallet_transfer',
             'app_wallet_deposit',
             'app_wallet_delete',
+            'app_transaction_complete',
+            'app_transaction_reject',
         ], $applicationRouteNames);
     }
 
-    #[DataProvider('walletIdRouteProvider')]
-    public function testWalletIdRoutesMatchOnlyDigits(string $path, string $method, string $routeName): void
+    #[DataProvider('resourceIdRouteProvider')]
+    public function testResourceIdRoutesMatchOnlyDigits(string $path, string $method, string $routeName): void
     {
         $context = new RequestContext();
         $context->setMethod($method);
@@ -104,12 +107,28 @@ final class RouteConfigurationTest extends KernelTestCase
             ['DELETE'],
             ['id' => '\\d+'],
         ];
+        yield 'transaction complete' => [
+            'app_transaction_complete',
+            '/api/transactions/{id}/complete',
+            [TransactionController::class, 'complete'],
+            ['POST'],
+            ['id' => '\\d+'],
+        ];
+        yield 'transaction reject' => [
+            'app_transaction_reject',
+            '/api/transactions/{id}/reject',
+            [TransactionController::class, 'reject'],
+            ['POST'],
+            ['id' => '\\d+'],
+        ];
     }
 
-    public static function walletIdRouteProvider(): iterable
+    public static function resourceIdRouteProvider(): iterable
     {
         yield 'deposit' => ['/api/wallets/42/deposit', 'POST', 'app_wallet_deposit'];
         yield 'delete' => ['/api/wallets/42', 'DELETE', 'app_wallet_delete'];
+        yield 'complete' => ['/api/transactions/42/complete', 'POST', 'app_transaction_complete'];
+        yield 'reject' => ['/api/transactions/42/reject', 'POST', 'app_transaction_reject'];
     }
 
     private function getRoute(string $name): Route

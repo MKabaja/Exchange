@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controller\TransactionController;
 use App\Controller\WalletController;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
@@ -30,6 +31,18 @@ return static function (RoutingConfigurator $routes): void {
     $routes->add('app_wallet_delete', '/api/wallets/{id}')
         ->controller([WalletController::class, 'delete'])
         ->methods(['DELETE'])
+        ->format('json')
+        ->requirements(['id' => '\\d+']);
+
+    $routes->add('app_transaction_complete', '/api/transactions/{id}/complete')
+        ->controller([TransactionController::class, 'complete'])
+        ->methods(['POST'])
+        ->format('json')
+        ->requirements(['id' => '\\d+']);
+
+    $routes->add('app_transaction_reject', '/api/transactions/{id}/reject')
+        ->controller([TransactionController::class, 'reject'])
+        ->methods(['POST'])
         ->format('json')
         ->requirements(['id' => '\\d+']);
 };
