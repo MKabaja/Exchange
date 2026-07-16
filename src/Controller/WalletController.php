@@ -18,10 +18,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-#[Route('/api/wallets')]
 final class WalletController extends AbstractController
 {
     public function __construct(
@@ -32,7 +30,6 @@ final class WalletController extends AbstractController
     ) {
     }
 
-    #[Route('', methods: ['GET'])]
     public function list(#[CurrentUser] User $user): JsonResponse
     {
         $wallets = $this->walletRepository->findByUserId($user->getIdNotNull());
@@ -40,7 +37,6 @@ final class WalletController extends AbstractController
         return new JsonResponse(array_map(static fn ($w) => new WalletResponse($w), $wallets));
     }
 
-    #[Route('', methods: ['POST'])]
     public function create(
         #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
         CreateWalletRequest $request,
@@ -51,7 +47,6 @@ final class WalletController extends AbstractController
         return new JsonResponse(new WalletResponse($wallet), Response::HTTP_CREATED);
     }
 
-    #[Route('/transfer', methods: ['POST'])]
     public function transfer(
         #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
         TransferRequest $request,
@@ -67,7 +62,6 @@ final class WalletController extends AbstractController
         return new JsonResponse(new TransactionResponse($transaction), Response::HTTP_CREATED);
     }
 
-    #[Route('/{id}/deposit', methods: ['POST'])]
     public function deposit(
         int $id,
         #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
@@ -83,7 +77,6 @@ final class WalletController extends AbstractController
         return new JsonResponse(new WalletResponse($wallet));
     }
 
-    #[Route('/{id}', methods: ['DELETE'])]
     public function delete(int $id, #[CurrentUser] User $user): Response
     {
         $this->walletService->deleteWallet($id, $user->getIdNotNull());
