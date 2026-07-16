@@ -10,9 +10,6 @@ use App\Entity\User;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
-use App\Exception\WalletAlreadyExistsException;
-use App\Exception\WalletBlockedException;
-use App\Exception\WalletNotFoundException;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
@@ -127,26 +124,6 @@ class WalletControllerTest extends TestCase
     /**
      * @throws Throwable
      */
-    public function testCreateReturnsConflictWhenWalletAlreadyExists(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->walletService
-            ->method('createWallet')
-            ->willThrowException(new WalletAlreadyExistsException(1, Currency::PLN));
-
-        $request = new Request(content: json_encode(['currency' => 'PLN'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->create($request, $user);
-
-        self::assertSame(409, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Wallet for user 1 in currency PLN already exists.', $data['error']);
-    }
-
-    /**
-     * @throws Throwable
-     */
     public function testTransferSuccessfully(): void
     {
         $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
@@ -256,30 +233,6 @@ class WalletControllerTest extends TestCase
     /**
      * @throws Throwable
      */
-    public function testTransferReturnsNotFoundWhenWalletNotFound(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->transferService
-            ->method('transfer')
-            ->willThrowException(new WalletNotFoundException(99));
-
-        $request = new Request(content: json_encode([
-            'fromWalletId' => 99,
-            'toWalletId' => 2,
-            'amount' => '100.00',
-        ], JSON_THROW_ON_ERROR));
-        $response = $this->controller->transfer($request, $user);
-
-        self::assertSame(404, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Wallet 99 not found.', $data['error']);
-    }
-
-    /**
-     * @throws Throwable
-     */
     #[DataProvider('validAmountProvider')]
     public function testDepositSuccessfully(string $amount): void
     {
@@ -349,46 +302,6 @@ class WalletControllerTest extends TestCase
 
         $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame(sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT), $data['error']);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testDepositReturnsNotFoundWhenWalletNotFound(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->depositService
-            ->method('deposit')
-            ->willThrowException(new WalletNotFoundException(99));
-
-        $request = new Request(content: json_encode(['amount' => '100.00'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->deposit(99, $request, $user);
-
-        self::assertSame(404, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Wallet 99 not found.', $data['error']);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testDepositReturnsUnprocessableWhenWalletBlocked(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->depositService
-            ->method('deposit')
-            ->willThrowException(new WalletBlockedException(5));
-
-        $request = new Request(content: json_encode(['amount' => '100.00'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->deposit(5, $request, $user);
-
-        self::assertSame(422, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Wallet 5 is blocked.', $data['error']);
     }
 
     public static function validAmountProvider(): iterable

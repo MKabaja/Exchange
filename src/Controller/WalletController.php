@@ -8,12 +8,6 @@ use App\Dto\TransactionResponse;
 use App\Dto\WalletResponse;
 use App\Entity\User;
 use App\Enum\Currency;
-use App\Exception\InsufficientFundsException;
-use App\Exception\WalletAlreadyExistsException;
-use App\Exception\WalletBlockedException;
-use App\Exception\WalletHasPendingTransactionsException;
-use App\Exception\WalletNotEmptyException;
-use App\Exception\WalletNotFoundException;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
@@ -65,11 +59,7 @@ final class WalletController extends AbstractController
             return new JsonResponse(['error' => 'Invalid currency.'], Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $wallet = $this->walletService->createWallet($user->getIdNotNull(), $currency);
-        } catch (WalletAlreadyExistsException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_CONFLICT);
-        }
+        $wallet = $this->walletService->createWallet($user->getIdNotNull(), $currency);
 
         return new JsonResponse(new WalletResponse($wallet), Response::HTTP_CREATED);
     }
@@ -92,18 +82,12 @@ final class WalletController extends AbstractController
             return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $transaction = $this->transferService->transfer(
-                $user->getIdNotNull(),
-                (int) $data['fromWalletId'],
-                (int) $data['toWalletId'],
-                (string) $data['amount'],
-            );
-        } catch (WalletNotFoundException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (InsufficientFundsException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $transaction = $this->transferService->transfer(
+            $user->getIdNotNull(),
+            (int) $data['fromWalletId'],
+            (int) $data['toWalletId'],
+            (string) $data['amount'],
+        );
 
         return new JsonResponse(new TransactionResponse($transaction), Response::HTTP_CREATED);
     }
@@ -128,17 +112,11 @@ final class WalletController extends AbstractController
             return new JsonResponse(['error' => sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT)], Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $wallet = $this->depositService->deposit(
-                $user->getIdNotNull(),
-                $id,
-                (string) $data['amount'],
-            );
-        } catch (WalletNotFoundException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (WalletBlockedException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        $wallet = $this->depositService->deposit(
+            $user->getIdNotNull(),
+            $id,
+            (string) $data['amount'],
+        );
 
         return new JsonResponse(new WalletResponse($wallet));
     }
@@ -146,15 +124,9 @@ final class WalletController extends AbstractController
     #[Route('/{id}', methods: ['DELETE'])]
     public function delete(int $id, #[CurrentUser] User $user): Response
     {
-        try {
-            $this->walletService->deleteWallet($id, $user->getIdNotNull());
+        $this->walletService->deleteWallet($id, $user->getIdNotNull());
 
-            return new Response(null, Response::HTTP_NO_CONTENT);
-        } catch (WalletNotFoundException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (WalletNotEmptyException|WalletHasPendingTransactionsException $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
     private function isValidAmount(mixed $amount): bool
