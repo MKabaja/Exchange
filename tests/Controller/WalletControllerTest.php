@@ -10,6 +10,9 @@ use App\Entity\User;
 use App\Entity\Wallet;
 use App\Enum\Currency;
 use App\Enum\TransactionStatus;
+use App\Http\Request\CreateWalletRequest;
+use App\Http\Request\DepositRequest;
+use App\Http\Request\TransferRequest;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
@@ -19,7 +22,6 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\Request;
 use Throwable;
 
 #[AllowMockObjectsWithoutExpectations]
@@ -83,42 +85,10 @@ class WalletControllerTest extends TestCase
             ->with(1, Currency::USD)
             ->willReturn($wallet);
 
-        $request = new Request(content: json_encode(['currency' => 'USD'], JSON_THROW_ON_ERROR));
+        $request = new CreateWalletRequest(Currency::USD);
         $response = $this->controller->create($request, $user);
 
         self::assertSame(201, $response->getStatusCode());
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testCreateReturnsBadRequestWhenCurrencyMissing(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode([], JSON_THROW_ON_ERROR));
-        $response = $this->controller->create($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertArrayHasKey('error', $data);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testCreateReturnsBadRequestWhenCurrencyInvalid(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode(['currency' => 'INVALID'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->create($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Invalid currency.', $data['error']);
     }
 
     /**
@@ -149,85 +119,10 @@ class WalletControllerTest extends TestCase
             ->with(1, 1, 2, '100.00')
             ->willReturn($transaction);
 
-        $request = new Request(content: json_encode([
-            'fromWalletId' => 1,
-            'toWalletId' => 2,
-            'amount' => '100.00',
-        ], JSON_THROW_ON_ERROR));
+        $request = new TransferRequest(1, 2, '100.00');
         $response = $this->controller->transfer($request, $user);
 
         self::assertSame(201, $response->getStatusCode());
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testTransferReturnsBadRequestWhenFromWalletIdMissing(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode(['toWalletId' => 2, 'amount' => '100.00'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->transfer($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertArrayHasKey('error', $data);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testTransferReturnsBadRequestWhenToWalletIdMissing(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode(['fromWalletId' => 1, 'amount' => '100.00'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->transfer($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertArrayHasKey('error', $data);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testTransferReturnsBadRequestWhenAmountMissing(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode(['fromWalletId' => 1, 'toWalletId' => 2], JSON_THROW_ON_ERROR));
-        $response = $this->controller->transfer($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertArrayHasKey('error', $data);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[DataProvider('invalidAmountProvider')]
-    public function testTransferReturnsBadRequestWhenAmountInvalid(mixed $amount): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->transferService->expects(self::never())->method('transfer');
-
-        $request = new Request(content: json_encode([
-            'fromWalletId' => 1,
-            'toWalletId' => 2,
-            'amount' => $amount,
-        ], JSON_THROW_ON_ERROR));
-        $response = $this->controller->transfer($request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Amount must be a positive number.', $data['error']);
     }
 
     /**
@@ -245,63 +140,10 @@ class WalletControllerTest extends TestCase
             ->with(1, 5, $amount)
             ->willReturn($wallet);
 
-        $request = new Request(content: json_encode(['amount' => $amount], JSON_THROW_ON_ERROR));
+        $request = new DepositRequest($amount);
         $response = $this->controller->deposit(5, $request, $user);
 
         self::assertSame(200, $response->getStatusCode());
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testDepositReturnsBadRequestWhenAmountMissing(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $request = new Request(content: json_encode([], JSON_THROW_ON_ERROR));
-        $response = $this->controller->deposit(5, $request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertArrayHasKey('error', $data);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[DataProvider('invalidAmountProvider')]
-    public function testDepositReturnsBadRequestWhenAmountInvalid(mixed $amount): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->depositService->expects(self::never())->method('deposit');
-
-        $request = new Request(content: json_encode(['amount' => $amount], JSON_THROW_ON_ERROR));
-        $response = $this->controller->deposit(5, $request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame('Amount must be a positive number.', $data['error']);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    public function testDepositReturnsBadRequestWhenAmountExceedsMax(): void
-    {
-        $user = new User(1, 'test@example.com', ['ROLE_USER'], new DateTimeImmutable());
-
-        $this->depositService->expects(self::never())->method('deposit');
-
-        $request = new Request(content: json_encode(['amount' => '10000.0001'], JSON_THROW_ON_ERROR));
-        $response = $this->controller->deposit(5, $request, $user);
-
-        self::assertSame(400, $response->getStatusCode());
-
-        $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame(sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT), $data['error']);
     }
 
     public static function validAmountProvider(): iterable
@@ -310,24 +152,5 @@ class WalletControllerTest extends TestCase
         yield 'decimal string' => ['500.00'];
         yield 'smallest positive amount with supported precision' => ['0.0001'];
         yield 'maximum deposit amount' => ['10000.0000'];
-    }
-
-    public static function invalidAmountProvider(): iterable
-    {
-        yield 'JSON integer' => [1];
-        yield 'JSON float' => [1.5];
-        yield 'scientific notation' => ['1e5'];
-        yield 'decimal comma' => ['1,5'];
-        yield 'negative amount' => ['-1'];
-        yield 'zero' => ['0'];
-        yield 'zero with decimal places' => ['0.0000'];
-        yield 'more than four decimal places' => ['1.00000'];
-        yield 'empty string' => [''];
-        yield 'leading whitespace' => [' 1'];
-        yield 'explicit plus sign' => ['+1'];
-        yield 'missing integer part' => ['.5'];
-        yield 'missing fractional part' => ['1.'];
-        yield 'array' => [[]];
-        yield 'object' => [(object) ['value' => '1']];
     }
 }

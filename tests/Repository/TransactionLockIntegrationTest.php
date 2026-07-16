@@ -21,7 +21,7 @@ final class TransactionLockIntegrationTest extends TestCase
         $firstConnection = DriverManager::getConnection($connectionParameters);
         $secondConnection = DriverManager::getConnection($connectionParameters);
         $tableName = sprintf('transaction_lock_test_%s', bin2hex(random_bytes(6)));
-        $table = $firstConnection->quoteIdentifier($tableName);
+        $table = $firstConnection->quoteSingleIdentifier($tableName);
 
         try {
             $firstConnection->executeStatement(sprintf(

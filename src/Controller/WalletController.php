@@ -7,20 +7,19 @@ namespace App\Controller;
 use App\Dto\TransactionResponse;
 use App\Dto\WalletResponse;
 use App\Entity\User;
-use App\Enum\Currency;
+use App\Http\Request\CreateWalletRequest;
+use App\Http\Request\DepositRequest;
+use App\Http\Request\TransferRequest;
 use App\Repository\WalletRepositoryInterface;
 use App\Service\DepositService;
 use App\Service\TransferService;
 use App\Service\WalletService;
-use App\Util\DecimalMath;
-use JsonException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use ValueError;
 
 #[Route('/api/wallets')]
 final class WalletController extends AbstractController
@@ -41,81 +40,44 @@ final class WalletController extends AbstractController
         return new JsonResponse(array_map(static fn ($w) => new WalletResponse($w), $wallets));
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('', methods: ['POST'])]
-    public function create(Request $request, #[CurrentUser] User $user): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-
-        if (!isset($data['currency'])) {
-            return new JsonResponse(['error' => 'Missing required field: currency.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            $currency = Currency::from($data['currency']);
-        } catch (ValueError) {
-            return new JsonResponse(['error' => 'Invalid currency.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $wallet = $this->walletService->createWallet($user->getIdNotNull(), $currency);
+    public function create(
+        #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
+        CreateWalletRequest $request,
+        #[CurrentUser] User $user,
+    ): JsonResponse {
+        $wallet = $this->walletService->createWallet($user->getIdNotNull(), $request->currency);
 
         return new JsonResponse(new WalletResponse($wallet), Response::HTTP_CREATED);
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('/transfer', methods: ['POST'])]
-    public function transfer(Request $request, #[CurrentUser] User $user): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-
-        foreach (['fromWalletId', 'toWalletId', 'amount'] as $field) {
-            if (!isset($data[$field])) {
-                return new JsonResponse(['error' => sprintf('Missing required field: %s.', $field)], Response::HTTP_BAD_REQUEST);
-            }
-        }
-
-        if (!$this->isValidAmount($data['amount'])) {
-            return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
-        }
-
+    public function transfer(
+        #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
+        TransferRequest $request,
+        #[CurrentUser] User $user,
+    ): JsonResponse {
         $transaction = $this->transferService->transfer(
             $user->getIdNotNull(),
-            (int) $data['fromWalletId'],
-            (int) $data['toWalletId'],
-            (string) $data['amount'],
+            $request->fromWalletId,
+            $request->toWalletId,
+            $request->amount,
         );
 
         return new JsonResponse(new TransactionResponse($transaction), Response::HTTP_CREATED);
     }
 
-    /**
-     * @throws JsonException
-     */
     #[Route('/{id}/deposit', methods: ['POST'])]
-    public function deposit(int $id, Request $request, #[CurrentUser] User $user): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) ?? [];
-
-        if (!isset($data['amount'])) {
-            return new JsonResponse(['error' => 'Missing required field: amount.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        if (!$this->isValidAmount($data['amount'])) {
-            return new JsonResponse(['error' => 'Amount must be a positive number.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        if (DecimalMath::compare($data['amount'], DepositService::MAX_AMOUNT) > 0) {
-            return new JsonResponse(['error' => sprintf('Amount cannot exceed %s.', DepositService::MAX_AMOUNT)], Response::HTTP_BAD_REQUEST);
-        }
-
+    public function deposit(
+        int $id,
+        #[MapRequestPayload(acceptFormat: 'json', validationFailedStatusCode: Response::HTTP_BAD_REQUEST)]
+        DepositRequest $request,
+        #[CurrentUser] User $user,
+    ): JsonResponse {
         $wallet = $this->depositService->deposit(
             $user->getIdNotNull(),
             $id,
-            (string) $data['amount'],
+            $request->amount,
         );
 
         return new JsonResponse(new WalletResponse($wallet));
@@ -127,14 +89,5 @@ final class WalletController extends AbstractController
         $this->walletService->deleteWallet($id, $user->getIdNotNull());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
-    }
-
-    private function isValidAmount(mixed $amount): bool
-    {
-        if (!is_string($amount) || 1 !== preg_match('/\A\d+(?:\.\d{1,4})?\z/', $amount)) {
-            return false;
-        }
-
-        return DecimalMath::compare($amount, '0') > 0;
     }
 }
